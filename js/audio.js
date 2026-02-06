@@ -211,6 +211,27 @@ export function playSwitch() {
     osc.stop(now + 0.05);
 }
 
+/** Ammo crate pickup — short ascending chime. */
+export function playPickup() {
+    const c = getCtx();
+    const now = c.currentTime;
+
+    // Two quick ascending notes
+    const notes = [660, 880];
+    notes.forEach((freq, i) => {
+        const osc = c.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.12, now + i * 0.08);
+        g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.15);
+        osc.connect(g);
+        g.connect(c.destination);
+        osc.start(now + i * 0.08);
+        osc.stop(now + i * 0.08 + 0.15);
+    });
+}
+
 /** Victory fanfare. */
 export function playVictory() {
     const c = getCtx();

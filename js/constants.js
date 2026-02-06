@@ -79,6 +79,7 @@ export const WEAPONS = Object.freeze({
         trailColour:     [255, 150, 50],
         projRadius:      4,
         colour:          '#e84',
+        ammo:            null,    // unlimited
     },
     SHOTGUN: {
         id:              'shotgun',
@@ -98,6 +99,7 @@ export const WEAPONS = Object.freeze({
         projRadius:      2,
         maxRange:        400,
         colour:          '#cc8',
+        ammo:            null,    // unlimited
     },
     GRENADE_LAUNCHER: {
         id:              'grenade',
@@ -121,6 +123,8 @@ export const WEAPONS = Object.freeze({
         minSpeed:        1.5,
         maxSpeed:        22,
         maxChargeTime:   1500,  // ms to reach full charge
+        ammo:            8,      // starting rounds
+        ammoPickup:      4,      // rounds per crate
     },
     SNIPER_RIFLE: {
         id:              'sniper',
@@ -139,6 +143,8 @@ export const WEAPONS = Object.freeze({
         trailColour:     [180, 210, 255],
         projRadius:      1.5,
         colour:          '#8af',
+        ammo:            3,       // starting rounds
+        ammoPickup:      2,       // rounds per crate
     },
     CLUSTER_BOMB: {
         id:              'cluster',
@@ -168,6 +174,8 @@ export const WEAPONS = Object.freeze({
         subBlastRadius:  14,
         subDamage:       15,
         subTerrainDestruct: 0.5,
+        ammo:            2,       // starting rounds
+        ammoPickup:      1,       // rounds per crate
     },
 });
 
@@ -213,6 +221,20 @@ export const AI_DIFFICULTY = Object.freeze({
 // ── Particle presets ────────────────────────────────────────────────
 export const PARTICLE_LIFETIME = 800;  // ms base
 export const MAX_PARTICLES     = 300;
+
+// ── Ammo crate config ──────────────────────────────────────────────
+export const CRATE = Object.freeze({
+    WIDTH:            16,
+    HEIGHT:           12,
+    PARACHUTE_SPEED:  0.4,    // px per ms (slow drift)
+    FREEFALL_GRAVITY: 0.25,   // px per ms² after parachute destroyed
+    TERMINAL_VEL:     6,      // max freefall speed
+    PARACHUTE_HP:     10,     // damage to destroy parachute
+    SPAWN_INTERVAL:   18000,  // ms between periodic spawns
+    INITIAL_CRATES:   2,      // crates spawned at round start
+    MIN_PLAYER_DIST:  180,    // min px from any player when spawning
+    LAND_DESTROY_VEL: 4,      // if landing faster than this, crate is destroyed
+});
 
 // ── Round / scoring ─────────────────────────────────────────────────
 export const ROUNDS_TO_WIN = 3;

@@ -20,7 +20,8 @@ import {
     drawCountdown, spawnDamageNumber, clearDamageNumbers,
     triggerScreenShake, getScreenShake, updateScreenShake,
 } from './ui.js';
-import { resumeAudio, playExplosion, playHit, playVictory } from './audio.js';
+import { resumeAudio, playExplosion, playHit, playVictory, playPickup } from './audio.js';
+import { PickupSystem } from './pickups.js';
 
 // ── Game States ─────────────────────────────────────────────────────
 
@@ -44,6 +45,7 @@ export class Game {
         this.terrain   = new Terrain();
         this.particles = new ParticleSystem();
         this.weapons   = new WeaponSystem(this.terrain, this.particles);
+        this.pickups   = new PickupSystem();
 
         // Players
         this.players = [
@@ -222,6 +224,7 @@ export class Game {
                 const charge = human.releaseCharge(now);
                 const muzzle = human.getMuzzle();
                 this.weapons.fire(human.weapon, muzzle.x, muzzle.y, human.aimAngle, human.index, charge);
+                human.consumeAmmo();
                 human.lastFireTime = now;
             }
         } else {
@@ -229,6 +232,7 @@ export class Game {
             if (this.input.mouseDown && human.canFire(now)) {
                 const muzzle = human.getMuzzle();
                 this.weapons.fire(human.weapon, muzzle.x, muzzle.y, human.aimAngle, human.index);
+                human.consumeAmmo();
                 human.lastFireTime = now;
             }
         }
@@ -272,8 +276,19 @@ export class Game {
                 }
             }
 
+            // Damage parachutes
+            this.pickups.damageParachutes(exp.x, exp.y, blastR, dmgBase);
+
             // Screen shake proportional to blast
             triggerScreenShake(blastR * 0.15, 200);
+        }
+
+        // ── Pickups ────────────────────────────────────────────────
+        const cratesBefore = this.pickups.crates.length;
+        this.pickups.update(dt, this.players, this.terrain);
+        // Play pickup sound if a crate was collected
+        if (this.pickups.crates.length < cratesBefore) {
+            playPickup();
         }
 
         // ── Particles ───────────────────────────────────────────────
@@ -349,6 +364,7 @@ export class Game {
         for (const p of this.players) p.wins = 0;
         this.weapons.clear();
         this.particles.clear();
+        this.pickups.clear();
         clearDamageNumbers();
         this.roundWinner = null;
         this.state = STATE.MENU;
@@ -396,6 +412,9 @@ export class Game {
                 }
             }
         }
+
+        // Pickups (behind projectiles)
+        this.pickups.draw(ctx);
 
         // Projectiles
         this.weapons.draw(ctx);
@@ -496,6 +515,7 @@ export class Game {
         // Clear systems
         this.weapons.clear();
         this.particles.clear();
+        this.pickups.clear();
         clearDamageNumbers();
         this.roundWinner = null;
         this._bgMapId = null; // force bg rebuild
@@ -505,6 +525,9 @@ export class Game {
         this.ai.target = p0;
         this.ai.terrain = this.terrain;
         this.ai.weapons = this.weapons;
+
+        // Spawn initial ammo crates
+        this.pickups.spawnInitial(this.players);
 
         // Countdown
         this.state = STATE.COUNTDOWN;

@@ -46,6 +46,10 @@ export class Player {
         this.charging    = false;
         this.chargeStart = 0;
 
+        // Ammo tracking: { weaponId: count } — null entries mean unlimited
+        this.ammo = {};
+        this._initAmmo();
+
         // Aiming
         this.aimAngle = index === 0 ? 0 : Math.PI; // face opponent initially
         this.facingRight = index === 0;
@@ -62,6 +66,14 @@ export class Player {
 
         // Score
         this.wins = 0;
+    }
+
+    /** Initialise ammo counts from weapon definitions. */
+    _initAmmo() {
+        this.ammo = {};
+        for (const w of WEAPON_LIST) {
+            this.ammo[w.id] = w.ammo; // null for unlimited, number for finite
+        }
     }
 
     /** Centre x of the player. */
@@ -86,6 +98,7 @@ export class Player {
         this.onGround = false;
         this.spawnX = spawnX;
         this.spawnY = spawnY;
+        this._initAmmo();
     }
 
     /** Switch to the next weapon. */
@@ -104,9 +117,25 @@ export class Player {
         }
     }
 
-    /** Can this player fire right now? */
+    /** Does the current weapon have ammo remaining? */
+    hasAmmo() {
+        const a = this.ammo[this.weapon.id];
+        return a === null || a > 0; // null = unlimited
+    }
+
+    /** Consume one round of the current weapon's ammo. */
+    consumeAmmo() {
+        const id = this.weapon.id;
+        if (this.ammo[id] !== null && this.ammo[id] > 0) {
+            this.ammo[id]--;
+        }
+    }
+
+    /** Can this player fire right now? (cooldown + ammo) */
     canFire(now) {
-        return !this.dead && (now - this.lastFireTime) >= this.weapon.cooldown;
+        return !this.dead &&
+            (now - this.lastFireTime) >= this.weapon.cooldown &&
+            this.hasAmmo();
     }
 
     /** Begin charging a chargeable weapon. */

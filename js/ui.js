@@ -137,40 +137,77 @@ function _drawWeaponHUD(ctx, player) {
         const w = WEAPON_LIST[i];
         const isActive = i === player.weaponIndex;
         const bx = startX + i * (slotW + 4);
+        const ammoCount = player.ammo[w.id]; // null = unlimited, number = remaining
+        const hasAmmo = ammoCount === null || ammoCount > 0;
+        const isEmpty = !hasAmmo;
 
-        // Background
-        ctx.fillStyle = isActive ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.3)';
+        // Background — dim empty weapons
+        if (isEmpty) {
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        } else {
+            ctx.fillStyle = isActive ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.3)';
+        }
         ctx.fillRect(bx, y, slotW, 36);
 
-        if (isActive) {
+        if (isActive && !isEmpty) {
             ctx.strokeStyle = w.colour;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(bx, y, slotW, 36);
+        } else if (isActive && isEmpty) {
+            ctx.strokeStyle = '#600';
             ctx.lineWidth = 2;
             ctx.strokeRect(bx, y, slotW, 36);
         }
 
         // Key binding
-        ctx.fillStyle = isActive ? '#fff' : '#999';
+        ctx.fillStyle = isEmpty ? '#555' : (isActive ? '#fff' : '#999');
         ctx.font = 'bold 10px monospace';
         ctx.fillText(`[${i + 1}]`, bx + 3, y + 13);
 
         // Weapon name
         ctx.font = '10px monospace';
+        ctx.fillStyle = isEmpty ? '#555' : (isActive ? '#fff' : '#999');
         ctx.fillText(w.name, bx + 26, y + 13);
 
-        // Chargeable indicator
-        if (w.chargeable) {
+        // Ammo count (right side)
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 10px monospace';
+        if (ammoCount === null) {
+            ctx.fillStyle = '#666';
+            ctx.fillText('\u221E', bx + slotW - 3, y + 13); // ∞
+        } else if (ammoCount > 0) {
+            ctx.fillStyle = ammoCount <= 1 ? '#f44' : '#ccc';
+            ctx.fillText(`${ammoCount}`, bx + slotW - 3, y + 13);
+        } else {
+            ctx.fillStyle = '#600';
+            ctx.fillText('0', bx + slotW - 3, y + 13);
+        }
+        ctx.textAlign = 'left';
+
+        // Chargeable indicator (only if ammo available)
+        if (w.chargeable && hasAmmo) {
             ctx.fillStyle = 'rgba(255,200,50,0.5)';
             ctx.font = '8px monospace';
-            ctx.fillText('HOLD', bx + slotW - 30, y + 13);
+            ctx.fillText('HOLD', bx + 26, y + 32);
         }
 
         // Cooldown bar
-        if (isActive) {
+        if (isActive && hasAmmo) {
             const now = performance.now();
             const elapsed = now - player.lastFireTime;
             const coolFrac = clamp(elapsed / w.cooldown, 0, 1);
             ctx.fillStyle = coolFrac >= 1 ? '#4f4' : '#f44';
-            ctx.fillRect(bx + 3, y + 22, (slotW - 6) * coolFrac, 4);
+            ctx.fillRect(bx + 3, y + 28, (slotW - 6) * coolFrac, 4);
+        }
+
+        // Strikethrough for empty weapons
+        if (isEmpty) {
+            ctx.strokeStyle = 'rgba(255,60,60,0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(bx + 2, y + 18);
+            ctx.lineTo(bx + slotW - 2, y + 18);
+            ctx.stroke();
         }
     }
 
