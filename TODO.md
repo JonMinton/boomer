@@ -24,6 +24,7 @@ Dynamic lava behaviour: terrain weakening from heat exposure → structural brea
 After winning a round, the player chooses one of their weapons to upgrade — each weapon has two upgrade paths that change its mechanics. Examples:
 - **Sniper → Beam Laser**: Hold to fire a continuous straight-line beam that vaporises terrain along its path and deals higher damage. The beam traces from the player through the cursor and beyond. Trades the precision single-shot for sustained terrain destruction.
 - **Sniper → Piercing Round**: Bullet passes through the first target and continues (reduced damage on second hit).
+- **Sniper → Rocket Sniper**: Hitscan attaches a sticky charge to the first element hit (terrain or player). After a 1-second delay, the charge detonates with a full rocket-sized blast radius. Combines sniper precision with area destruction — a direct body hit means the opponent carries the bomb.
 - **Rocket → MIRV**: Splits into 3 smaller warheads at apex of arc.
 - **Rocket → Napalm**: Leaves burning ground on impact (area denial).
 - **Shotgun → Slug**: Single high-damage projectile, longer range.
@@ -79,3 +80,4 @@ Some ideas for future weapons:
 - [x] Weapon HUD ammo counters with empty-weapon visual feedback
 - [x] Sniper laser sight mechanic (hold to aim with visible laser, release to fire)
 - [x] AI sighting state for sniper (holds laser for difficulty-scaled duration)
+- [x] Sniper hitscan raycast (replaces travelling projectile — instant ray checks terrain + player bodies)
