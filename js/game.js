@@ -53,6 +53,9 @@ export class Game {
             new Player(1, CANVAS_WIDTH - 120, 100, '#ff4444', 'Bot'),
         ];
 
+        // Give weapon system access to players for hitscan collision
+        this.weapons.players = this.players;
+
         // AI
         this.ai = new AIController(
             this.players[1], this.players[0],

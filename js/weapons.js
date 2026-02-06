@@ -45,6 +45,12 @@ export class WeaponSystem {
 
         /** Pending explosions to process this frame: [{x,y,weapon,ownerIndex,blastRadius,damage}] */
         this.pendingExplosions = [];
+
+        /** Players array — set by Game for hitscan collision checks. */
+        this.players = [];
+
+        /** Brief hitscan tracer lines for visual feedback: [{x1,y1,x2,y2,age,maxAge}] */
+        this.hitscanTracers = [];
     }
 
     /**
@@ -58,6 +64,12 @@ export class WeaponSystem {
      */
     fire(weapon, x, y, aimAngle, ownerIndex, chargeFraction = 1) {
         playShot(weapon.id);
+
+        // Hitscan weapons resolve instantly via raycast
+        if (weapon.hitscan) {
+            this._fireHitscan(weapon, x, y, aimAngle, ownerIndex);
+            return;
+        }
 
         // Determine projectile speed
         let speed = weapon.speed;
@@ -79,6 +91,89 @@ export class WeaponSystem {
     }
 
     /**
+     * Fire a hitscan weapon: instant raycast from muzzle along aim angle.
+     * Checks terrain and player bodies — first hit along the ray wins.
+     */
+    _fireHitscan(weapon, x, y, aimAngle, ownerIndex) {
+        const cosA = Math.cos(aimAngle);
+        const sinA = Math.sin(aimAngle);
+        const step = 2;   // px — small enough to never skip a 20px-wide player
+        const maxDist = 1500;
+
+        let hitX = x;
+        let hitY = y;
+        let hitPlayerIdx = -1;
+
+        for (let d = step; d < maxDist; d += step) {
+            const rx = x + cosA * d;
+            const ry = y + sinA * d;
+
+            // Off-screen → end of ray
+            if (rx < -20 || rx > WORLD_WIDTH + 20 ||
+                ry < -200 || ry > WORLD_HEIGHT + 20) {
+                hitX = rx;
+                hitY = ry;
+                break;
+            }
+
+            // Check terrain
+            if (this.terrain.isSolid(Math.round(rx), Math.round(ry))) {
+                hitX = rx;
+                hitY = ry;
+                break;
+            }
+
+            // Check player bodies
+            for (let pi = 0; pi < this.players.length; pi++) {
+                if (pi === ownerIndex) continue; // can't hitscan yourself
+                const plr = this.players[pi];
+                if (!plr || plr.dead) continue;
+
+                if (rx >= plr.x && rx <= plr.x + plr.width &&
+                    ry >= plr.y && ry <= plr.y + plr.height) {
+                    hitX = rx;
+                    hitY = ry;
+                    hitPlayerIdx = pi;
+                    break;
+                }
+            }
+            if (hitPlayerIdx >= 0) break; // player hit — stop the ray
+
+            hitX = rx;
+            hitY = ry;
+        }
+
+        // Create visual tracer (fading line from muzzle to impact)
+        this.hitscanTracers.push({
+            x1: x, y1: y,
+            x2: hitX, y2: hitY,
+            age: 0,
+            maxAge: 200,  // ms
+        });
+
+        // Terrain destruction at impact point
+        const destructRadius = weapon.blastRadius * weapon.terrainDestruct;
+        this.terrain.destroyCircle(hitX, hitY, destructRadius, 3);
+
+        // Particles and sound
+        const intensity = weapon.blastRadius / 42;
+        this.particles.emitExplosion(hitX, hitY, weapon.blastRadius, weapon.trailColour);
+        playExplosion(Math.min(1, intensity));
+
+        // Queue explosion for damage processing
+        this.pendingExplosions.push({
+            x: hitX,
+            y: hitY,
+            weapon,
+            ownerIndex,
+            blastRadius: weapon.blastRadius,
+            damage: weapon.damage,
+            knockback: weapon.knockback,
+            directHitPlayerIdx: hitPlayerIdx,
+        });
+    }
+
+    /**
      * Update all projectiles.
      * @param {number} dt - Delta time in ms
      * @param {Object[]} players - Array of player objects for collision
@@ -86,6 +181,14 @@ export class WeaponSystem {
     update(dt, players) {
         this.pendingExplosions = [];
         const dtFactor = dt / 16; // normalise to ~60fps
+
+        // Age and cull hitscan tracers
+        for (let i = this.hitscanTracers.length - 1; i >= 0; i--) {
+            this.hitscanTracers[i].age += dt;
+            if (this.hitscanTracers[i].age >= this.hitscanTracers[i].maxAge) {
+                this.hitscanTracers.splice(i, 1);
+            }
+        }
 
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const p = this.projectiles[i];
@@ -106,14 +209,9 @@ export class WeaponSystem {
             p.age += dt;
             p.distTravelled += dist(oldX, oldY, p.x, p.y);
 
-            // Trail particles
+            // Trail particles (sniper uses hitscan, so no projectile trail)
             if (p.weapon.id === 'rocket') {
                 this.particles.emitTrail(p.x, p.y, p.weapon.trailColour);
-            } else if (p.weapon.id === 'sniper') {
-                // Thin fast trail
-                if (Math.random() < 0.6) {
-                    this.particles.emitTrail(p.x, p.y, p.weapon.trailColour);
-                }
             } else if (p.weapon.id === 'cluster' && !p.isSub) {
                 this.particles.emitTrail(p.x, p.y, p.weapon.trailColour);
             } else if ((p.weapon.id === 'grenade' || (p.weapon.id === 'cluster' && p.isSub)) && Math.random() < 0.3) {
@@ -332,32 +430,46 @@ export class WeaponSystem {
             ctx.restore();
         }
 
-        // Draw sniper tracer lines (brief flash effect)
-        this._drawSniperTracers(ctx);
+        // Draw hitscan tracer lines (brief flash effect)
+        this._drawHitscanTracers(ctx);
     }
 
-    /** Brief tracer line for sniper shots (cosmetic). */
-    _drawSniperTracers(ctx) {
-        for (const p of this.projectiles) {
-            if (!p.alive || p.weapon.id !== 'sniper') continue;
-            if (p.age > 80) continue; // only show for first ~80ms
+    /** Draw fading hitscan tracer lines (sniper). */
+    _drawHitscanTracers(ctx) {
+        for (const t of this.hitscanTracers) {
+            const frac = 1 - t.age / t.maxAge;
 
-            const alpha = 1 - p.age / 80;
-            ctx.strokeStyle = `rgba(180,210,255,${alpha * 0.4})`;
-            ctx.lineWidth = 1;
+            // Bright core line
+            ctx.strokeStyle = `rgba(180,210,255,${frac * 0.7})`;
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            // Line from roughly where it was fired to current position
-            const backDist = Math.min(p.distTravelled, 200);
-            const ang = Math.atan2(p.vy, p.vx);
-            ctx.moveTo(p.x - Math.cos(ang) * backDist, p.y - Math.sin(ang) * backDist);
-            ctx.lineTo(p.x, p.y);
+            ctx.moveTo(t.x1, t.y1);
+            ctx.lineTo(t.x2, t.y2);
             ctx.stroke();
+
+            // Wider glow
+            ctx.strokeStyle = `rgba(140,180,255,${frac * 0.2})`;
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(t.x1, t.y1);
+            ctx.lineTo(t.x2, t.y2);
+            ctx.stroke();
+
+            // Impact flash (first 60ms)
+            if (t.age < 60) {
+                const flashAlpha = (1 - t.age / 60) * 0.8;
+                ctx.fillStyle = `rgba(220,240,255,${flashAlpha})`;
+                ctx.beginPath();
+                ctx.arc(t.x2, t.y2, 6 * (1 - t.age / 60), 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
     }
 
-    /** Clear all projectiles. */
+    /** Clear all projectiles and tracers. */
     clear() {
         this.projectiles.length = 0;
         this.pendingExplosions.length = 0;
+        this.hitscanTracers.length = 0;
     }
 }
