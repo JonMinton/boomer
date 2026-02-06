@@ -168,7 +168,7 @@ export class WeaponSystem {
 
                 if (p.x >= plr.x && p.x <= plr.x + plr.width &&
                     p.y >= plr.y && p.y <= plr.y + plr.height) {
-                    this._explode(p);
+                    this._explode(p, pi); // pass hit player index
                     break;
                 }
             }
@@ -212,7 +212,12 @@ export class WeaponSystem {
     }
 
     /** Trigger explosion at projectile's position. */
-    _explode(p) {
+    /**
+     * Explode a projectile.
+     * @param {Projectile} p
+     * @param {number} [directHitPlayerIdx=-1] - Player index if this was a direct body hit
+     */
+    _explode(p, directHitPlayerIdx = -1) {
         p.alive = false;
         const w = p.weapon;
 
@@ -261,6 +266,7 @@ export class WeaponSystem {
             blastRadius: radius,
             damage: damage,
             knockback: w.knockback * (p.isSub ? 0.6 : 1),
+            directHitPlayerIdx,
         });
     }
 

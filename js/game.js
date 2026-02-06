@@ -265,8 +265,12 @@ export class Game {
             for (const p of this.players) {
                 if (p.dead) continue;
                 const d = dist(exp.x, exp.y, p.cx, p.cy);
-                if (d < blastR) {
-                    const falloff = 1 - (d / blastR);
+
+                // Direct hit: projectile collided with this player's hitbox
+                const isDirectHit = exp.directHitPlayerIdx === p.index;
+
+                if (isDirectHit || d < blastR) {
+                    const falloff = isDirectHit ? 1 : 1 - (d / blastR);
                     const dmg = dmgBase * falloff;
                     p.takeDamage(dmg);
                     p.applyKnockback(exp.x, exp.y, kb, blastR);

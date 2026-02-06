@@ -403,12 +403,11 @@ export function drawMainMenu(ctx, selectedMap, selectedDifficulty, hover, wrapSc
     ctx.fillStyle = wrapScreen ? '#fff' : '#aaa';
     ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText('Screen Wrap', cbX + cbS + 10, wrapY + 26);
+    ctx.fillText('Screen Wrap', cbX + cbS + 10, wrapY + 25);
 
-    ctx.fillStyle = '#888';
-    ctx.font = '10px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText('toroidal edges', wrapX + wrapW - 10, wrapY + 26);
+    ctx.fillStyle = '#666';
+    ctx.font = '9px monospace';
+    ctx.fillText('toroidal edges', cbX + cbS + 10, wrapY + 36);
 
     // Start button
     const startX = CANVAS_WIDTH / 2 - 100;
