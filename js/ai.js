@@ -73,6 +73,14 @@ export class AIController {
             return;
         }
 
+        // Passive mode (training dummy): stand still, do nothing
+        if (this.difficulty.passive) {
+            this.moveDir  = 0;
+            this.wantJump = false;
+            this.wantFire = false;
+            return;
+        }
+
         this.stateTime += dt;
         this._trackTarget(dt);
         this._checkLineOfSight();

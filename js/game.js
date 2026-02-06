@@ -6,6 +6,7 @@
 import {
     CANVAS_WIDTH, CANVAS_HEIGHT,
     MAX_HEALTH, WEAPON_LIST, ROUNDS_TO_WIN, ROUND_START_DELAY,
+    AI_DIFFICULTY,
 } from './constants.js';
 import { dist, clamp } from './utils.js';
 import { InputManager } from './input.js';
@@ -80,6 +81,10 @@ export class Game {
 
         // Round over timer
         this.roundOverTimer = 0;
+
+        // Training mode heal tracking
+        this._trainingHealTimer = 0;
+        this._trainingLastHP    = MAX_HEALTH;
 
         // Background gradient cache
         this._bgGrad = null;
@@ -305,6 +310,7 @@ export class Game {
             // Screen shake proportional to blast
             triggerScreenShake(blastR * 0.15, 200);
         }
+        this.weapons.pendingExplosions.length = 0;
 
         // ── Pickups ────────────────────────────────────────────────
         const cratesBefore = this.pickups.crates.length;
@@ -317,6 +323,24 @@ export class Game {
         // ── Particles ───────────────────────────────────────────────
         this.particles.update(dt);
         updateScreenShake(dt);
+
+        // ── Training mode: restore bot HP after heal delay ─────────
+        const diff = AI_DIFFICULTY[this.selectedDifficulty];
+        if (diff && diff.passive) {
+            const bot = this.players[1];
+            if (!bot.dead && bot.health < MAX_HEALTH) {
+                if (bot.health < this._trainingLastHP) {
+                    // New damage — reset heal timer
+                    this._trainingHealTimer = 0;
+                }
+                this._trainingHealTimer += dt;
+                if (this._trainingHealTimer >= (diff.healDelay || 2000)) {
+                    bot.health = MAX_HEALTH;
+                    this._trainingHealTimer = 0;
+                }
+            }
+            this._trainingLastHP = bot.health;
+        }
 
         // ── Check round end ─────────────────────────────────────────
         for (const p of this.players) {
@@ -605,6 +629,10 @@ export class Game {
 
         p0.reset(mapDef.spawnLeft[0], spawnY0);
         p1.reset(mapDef.spawnRight[0], spawnY1);
+
+        // Reset training mode heal tracking
+        this._trainingHealTimer = 0;
+        this._trainingLastHP    = MAX_HEALTH;
 
         // Clear systems
         this.weapons.clear();

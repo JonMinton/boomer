@@ -193,6 +193,17 @@ export const WEAPON_LIST = [
 
 // ── AI difficulty presets ───────────────────────────────────────────
 export const AI_DIFFICULTY = Object.freeze({
+    TRAINING: {
+        label:        'Training',
+        passive:       true,    // bot stands still, does not fire
+        aimOffset:     1.0,
+        reactionTime:  99999,
+        fireRateMult:  0,
+        moveSkill:     0,
+        dodgeChance:   0,
+        weaponSwitch:  0,
+        healDelay:     2000,    // ms before bot restores to full HP after last hit
+    },
     EASY: {
         label:        'Easy',
         aimOffset:     0.45,   // radians of random aim deviation

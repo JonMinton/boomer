@@ -179,7 +179,9 @@ export class WeaponSystem {
      * @param {Object[]} players - Array of player objects for collision
      */
     update(dt, players) {
-        this.pendingExplosions = [];
+        // NOTE: pendingExplosions is NOT cleared here — hitscan weapons add
+        // to it during fire() (before update runs). The Game clears it after
+        // processing all explosions each frame.
         const dtFactor = dt / 16; // normalise to ~60fps
 
         // Age and cull hitscan tracers

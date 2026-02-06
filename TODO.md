@@ -31,6 +31,14 @@ After winning a round, the player chooses one of their weapons to upgrade — ea
 - **Shotgun → Incendiary**: Pellets ignite terrain on contact.
 This creates diverging builds across a match and strategic choices about which weapon to invest in.
 
+### Training room easter egg
+If the player destroys enough terrain in the training room to reach the far-left edge of the map and then walks slightly off-screen (past x=0), they find a hidden secret — a weapon or upgrade that persists into the next real game. This rewards thorough exploration of the training room and creates an incentive to experiment with terrain destruction. Implementation considerations:
+- Detect when the human player's x < some threshold (e.g. -20) while in training mode
+- Display a hidden pickup/pedestal just off the left edge
+- Grant a one-time bonus (unique weapon variant, extra ammo, or first-round upgrade) that carries into the next match
+- Could rotate which secret is available, adding replayability
+- The secret should be subtle enough that players discover it organically through experimentation
+
 ## Gameplay improvements
 
 ### Terrain-aware wrapping

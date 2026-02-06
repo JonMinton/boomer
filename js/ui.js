@@ -218,34 +218,9 @@ function _drawWeaponHUD(ctx, player) {
         }
     }
 
-    // ── Sight indicator (shown when actively sighting — sniper) ──
-    if (player.sighting && player.weapon.sighted) {
-        const now = performance.now();
-        const frac = player.getSightFraction(now);
-        const barW = 80;
-        const barH = 8;
-        const barX = player.cx - barW / 2;
-        const barY = player.y - 34;
-
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-
-        // Red fill — brightens as sight fraction increases
-        const r = 255;
-        const g = Math.round(lerp(80, 30, frac));
-        const b = Math.round(lerp(60, 20, frac));
-        ctx.fillStyle = `rgb(${r},${g},${b})`;
-        ctx.fillRect(barX, barY, barW * frac, barH);
-
-        ctx.strokeStyle = 'rgba(255,80,60,0.6)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(barX, barY, barW, barH);
-
-        ctx.fillStyle = '#f44';
-        ctx.font = 'bold 9px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('SIGHTING', player.cx, barY - 2);
-    }
+    // Note: no progress bar for sighted weapons (sniper) — the visible
+    // laser sight on screen is the feedback.  Charge bar is only for
+    // chargeable weapons (grenade / cluster).
 
     // ── Charge indicator (shown when actively charging) ──
     if (player.charging && player.weapon.chargeable) {
