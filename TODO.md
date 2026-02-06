@@ -64,3 +64,6 @@ Some ideas for future weapons:
 - [x] Toroidal screen wrapping with menu toggle
 - [x] Exit game / return to menu (Escape key from any state)
 - [x] Sniper rifle damage buff (45→65, two-hit kill)
+- [x] Finite ammo system with parachute crate drops (grenade 8, sniper 3, cluster 2)
+- [x] Ammo-aware AI weapon selection with fallback logic
+- [x] Weapon HUD ammo counters with empty-weapon visual feedback

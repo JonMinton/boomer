@@ -29,6 +29,7 @@ python3 -m http.server 8000
 | `weapons.js` | 357 | Projectile lifecycle: firing, ray-stepping collision, explosions, cluster splitting, sniper tracers. Owns `pendingExplosions` queue |
 | `terrain.js` | 228 | Pixel-based destructible terrain: `Uint8Array` material grid, `destroyCircle()` with power falloff, ambient occlusion shading |
 | `maps.js` | 311 | 4 map definitions (Grasslands, Desert, Urban, Volcanic) + procedural generation via value noise heightmaps |
+| `pickups.js` | 313 | Ammo crate system: spawning, parachute descent, terrain landing, player collection, explosion-destroyable parachutes, drawing |
 | `particles.js` | 189 | Particle effects: debris, smoke, sparks, hit markers, projectile trails |
 | `ui.js` | 457 | All UI: main menu (map/difficulty/wrap selectors), HUD (health bars, ammo, weapon slots), charge indicator, score, damage numbers, screen shake |
 | `audio.js` | 232 | Synthesised sound via Web Audio API — no external assets. Per-weapon fire sounds, explosions, hits, victory jingle |
@@ -44,14 +45,16 @@ python3 -m http.server 8000
 - **Charge-to-fire mechanic**: Grenade launcher and cluster bomb use hold-to-charge (Worms-style). Speed interpolates between `minSpeed` and `maxSpeed` over `maxChargeTime` ms. The physics were tuned so 75% charge at 45° covers the full screen width (~1200px), using the formula `Range ≈ S² / g_eff`.
 - **World bounds ownership**: Horizontal bounds clamping (or wrapping) is handled in `game.js`, not `player.js`, so it can switch between modes cleanly.
 - **Surface material effects**: Sand slows movement (0.6× speed mod), snow is slippery (1.1× speed mod, less friction), lava damages continuously.
+- **Self-damage as a balancing mechanic**: Explosions damage ALL players including the firer — there is no owner immunity. Powerful weapons (cluster bomb, grenade launcher) have large or scattered blast zones that punish careless close-range use. This is a deliberate design principle: bigger weapons are constrained by both limited ammo and self-damage risk.
+- **Finite ammo + parachute crate drops**: Grenade (8), sniper (3), and cluster bomb (2) have finite ammo. Rocket launcher and shotgun are unlimited workhorse weapons. Ammo crates drop from the sky with parachutes (2 at round start, then every 18s). Parachutes can be destroyed by explosions, causing the crate to freefall and potentially smash on hard impact. Collecting a crate refills the finite weapon with the lowest ammo proportion. This creates contested map control points and resource management decisions.
 
 ### Weapons (5 total)
 
-1. **Rocket Launcher** — medium speed, large blast radius, high terrain destruction
-2. **Shotgun** — 6 pellets in a spread, short range (maxRange: 300), minimal terrain destruction
-3. **Grenade Launcher** — chargeable arc weapon, good terrain destruction, gravity 0.07
-4. **Sniper Rifle** — very fast projectile (speed 32), high damage (45), negligible terrain destruction, tracer visual
-5. **Cluster Bomb** — chargeable, splits into 5 sub-munitions on impact (`isSub` flag prevents recursive splitting)
+1. **Rocket Launcher** — medium speed, large blast radius, high terrain destruction. Unlimited ammo.
+2. **Shotgun** — 8 pellets in a spread, short range (maxRange: 400), minimal terrain destruction. Unlimited ammo.
+3. **Grenade Launcher** — chargeable arc weapon, good terrain destruction, gravity 0.07. 8 rounds, +4 per crate.
+4. **Sniper Rifle** — very fast projectile (speed 32), high damage (65, two-hit kill), negligible terrain destruction, tracer visual. 3 rounds, +2 per crate.
+5. **Cluster Bomb** — chargeable, splits into 5 sub-munitions on impact (`isSub` flag prevents recursive splitting). High self-damage risk. 2 rounds, +1 per crate.
 
 ### AI state machine
 
