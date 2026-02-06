@@ -1,0 +1,449 @@
+/**
+ * Boomer - Main Game Controller
+ * Manages game states, the main loop, and orchestrates all systems.
+ */
+
+import {
+    CANVAS_WIDTH, CANVAS_HEIGHT,
+    MAX_HEALTH, WEAPON_LIST, ROUNDS_TO_WIN, ROUND_START_DELAY,
+} from './constants.js';
+import { dist, clamp } from './utils.js';
+import { InputManager } from './input.js';
+import { Terrain } from './terrain.js';
+import { ParticleSystem } from './particles.js';
+import { WeaponSystem } from './weapons.js';
+import { Player } from './player.js';
+import { AIController } from './ai.js';
+import { MAP_DEFS, generateMap, findSpawnY } from './maps.js';
+import {
+    drawHUD, drawMainMenu, drawRoundOver, drawMatchOver,
+    drawCountdown, spawnDamageNumber, clearDamageNumbers,
+    triggerScreenShake, getScreenShake, updateScreenShake,
+} from './ui.js';
+import { resumeAudio, playExplosion, playHit, playVictory } from './audio.js';
+
+// ── Game States ─────────────────────────────────────────────────────
+
+const STATE = Object.freeze({
+    MENU:       'menu',
+    COUNTDOWN:  'countdown',
+    PLAYING:    'playing',
+    ROUND_OVER: 'round_over',
+    MATCH_OVER: 'match_over',
+});
+
+export class Game {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx    = canvas.getContext('2d');
+        canvas.width  = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        // Core systems
+        this.input     = new InputManager(canvas);
+        this.terrain   = new Terrain();
+        this.particles = new ParticleSystem();
+        this.weapons   = new WeaponSystem(this.terrain, this.particles);
+
+        // Players
+        this.players = [
+            new Player(0, 100, 100, '#4488ff', 'Player'),
+            new Player(1, CANVAS_WIDTH - 120, 100, '#ff4444', 'Bot'),
+        ];
+
+        // AI
+        this.ai = new AIController(
+            this.players[1], this.players[0],
+            this.terrain, this.weapons, 'MEDIUM'
+        );
+
+        // Game state
+        this.state       = STATE.MENU;
+        this.lastTime    = 0;
+        this.roundWinner = null;
+
+        // Menu state
+        this.selectedMap        = 0;
+        this.selectedDifficulty = 'MEDIUM';
+        this.menuHover = { map: null, diff: null, start: false };
+        this.menuRegions = null;
+
+        // Countdown
+        this.countdownTimer = 0;
+        this.countdownText  = '';
+
+        // Round over timer
+        this.roundOverTimer = 0;
+
+        // Background gradient cache
+        this._bgGrad = null;
+        this._bgMapId = null;
+
+        // Bind loop
+        this._loop = this._loop.bind(this);
+    }
+
+    /** Start the game loop. */
+    start() {
+        this.lastTime = performance.now();
+        requestAnimationFrame(this._loop);
+    }
+
+    /** Main loop. */
+    _loop(timestamp) {
+        const dt = Math.min(timestamp - this.lastTime, 50); // cap delta
+        this.lastTime = timestamp;
+
+        this._update(dt, timestamp);
+        this._draw(timestamp);
+
+        this.input.endFrame();
+        requestAnimationFrame(this._loop);
+    }
+
+    // ── Update ──────────────────────────────────────────────────────
+
+    _update(dt, now) {
+        switch (this.state) {
+            case STATE.MENU:
+                this._updateMenu(dt, now);
+                break;
+            case STATE.COUNTDOWN:
+                this._updateCountdown(dt, now);
+                break;
+            case STATE.PLAYING:
+                this._updatePlaying(dt, now);
+                break;
+            case STATE.ROUND_OVER:
+                this._updateRoundOver(dt, now);
+                break;
+            case STATE.MATCH_OVER:
+                this._updateMatchOver(dt, now);
+                break;
+        }
+    }
+
+    _updateMenu(dt, now) {
+        // Check hover regions
+        if (this.menuRegions) {
+            const mx = this.input.mouseX;
+            const my = this.input.mouseY;
+            this.menuHover = { map: null, diff: null, start: false };
+
+            for (const r of this.menuRegions.mapRegions) {
+                if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+                    this.menuHover.map = r.index;
+                    if (this.input.mouseJustPressed) {
+                        this.selectedMap = r.index;
+                        resumeAudio();
+                    }
+                }
+            }
+
+            for (const r of this.menuRegions.diffRegions) {
+                if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+                    this.menuHover.diff = r.key;
+                    if (this.input.mouseJustPressed) {
+                        this.selectedDifficulty = r.key;
+                        resumeAudio();
+                    }
+                }
+            }
+
+            const sr = this.menuRegions.startRegion;
+            if (mx >= sr.x && mx <= sr.x + sr.w && my >= sr.y && my <= sr.y + sr.h) {
+                this.menuHover.start = true;
+                if (this.input.mouseJustPressed) {
+                    resumeAudio();
+                    this._startMatch();
+                }
+            }
+        }
+
+        // Enter key to start
+        if (this.input.wasPressed('enter')) {
+            resumeAudio();
+            this._startMatch();
+        }
+    }
+
+    _updateCountdown(dt, now) {
+        this.countdownTimer -= dt;
+
+        if (this.countdownTimer > 1500) {
+            this.countdownText = '3';
+        } else if (this.countdownTimer > 1000) {
+            this.countdownText = '2';
+        } else if (this.countdownTimer > 500) {
+            this.countdownText = '1';
+        } else if (this.countdownTimer > 0) {
+            this.countdownText = 'FIGHT!';
+        } else {
+            this.state = STATE.PLAYING;
+        }
+    }
+
+    _updatePlaying(dt, now) {
+        // ── Human input ─────────────────────────────────────────────
+        const human = this.players[0];
+        let moveDir = 0;
+        if (this.input.isDown('a') || this.input.isDown('arrowleft'))  moveDir -= 1;
+        if (this.input.isDown('d') || this.input.isDown('arrowright')) moveDir += 1;
+        const jump = this.input.isDown('w') || this.input.isDown('arrowup') || this.input.isDown(' ');
+        human.applyInput(moveDir, jump);
+        human.aimAt(this.input.mouseX, this.input.mouseY);
+
+        // Fire — with charge support for chargeable weapons
+        if (human.weapon.chargeable) {
+            // Chargeable weapon: hold to charge, release to fire
+            if (this.input.mouseJustPressed && human.canFire(now)) {
+                human.startCharge(now);
+            }
+            if (human.charging && !this.input.mouseDown) {
+                // Released — fire with charge
+                const charge = human.releaseCharge(now);
+                const muzzle = human.getMuzzle();
+                this.weapons.fire(human.weapon, muzzle.x, muzzle.y, human.aimAngle, human.index, charge);
+                human.lastFireTime = now;
+            }
+        } else {
+            // Non-chargeable: fire on click
+            if (this.input.mouseDown && human.canFire(now)) {
+                const muzzle = human.getMuzzle();
+                this.weapons.fire(human.weapon, muzzle.x, muzzle.y, human.aimAngle, human.index);
+                human.lastFireTime = now;
+            }
+        }
+
+        // Weapon switching (cancel charge if switching)
+        const switchWeapon = (idx) => { human.charging = false; human.setWeapon(idx); };
+        if (this.input.wasPressed('1')) switchWeapon(0);
+        if (this.input.wasPressed('2')) switchWeapon(1);
+        if (this.input.wasPressed('3')) switchWeapon(2);
+        if (this.input.wasPressed('4')) switchWeapon(3);
+        if (this.input.wasPressed('5')) switchWeapon(4);
+        if (this.input.wasPressed('q')) { human.charging = false; human.nextWeapon(); }
+
+        // ── AI update ───────────────────────────────────────────────
+        this.ai.update(dt, now);
+
+        // ── Physics ─────────────────────────────────────────────────
+        for (const p of this.players) {
+            p.updatePhysics(dt, this.terrain);
+        }
+
+        // ── Weapons / Projectiles ───────────────────────────────────
+        this.weapons.update(dt, this.players);
+
+        // Process explosions → damage + knockback
+        for (const exp of this.weapons.pendingExplosions) {
+            const blastR = exp.blastRadius;
+            const dmgBase = exp.damage;
+            const kb = exp.knockback;
+            for (const p of this.players) {
+                if (p.dead) continue;
+                const d = dist(exp.x, exp.y, p.cx, p.cy);
+                if (d < blastR) {
+                    const falloff = 1 - (d / blastR);
+                    const dmg = dmgBase * falloff;
+                    p.takeDamage(dmg);
+                    p.applyKnockback(exp.x, exp.y, kb, blastR);
+                    spawnDamageNumber(p.cx, p.y - 10, dmg);
+                    playHit();
+                    this.particles.emitHit(p.cx, p.cy);
+                }
+            }
+
+            // Screen shake proportional to blast
+            triggerScreenShake(blastR * 0.15, 200);
+        }
+
+        // ── Particles ───────────────────────────────────────────────
+        this.particles.update(dt);
+        updateScreenShake(dt);
+
+        // ── Check round end ─────────────────────────────────────────
+        for (const p of this.players) {
+            if (p.dead) {
+                const winner = this.players.find(pl => !pl.dead);
+                if (winner) {
+                    winner.wins++;
+                    this.roundWinner = winner;
+
+                    if (winner.wins >= ROUNDS_TO_WIN) {
+                        this.state = STATE.MATCH_OVER;
+                        playVictory();
+                    } else {
+                        this.state = STATE.ROUND_OVER;
+                        this.roundOverTimer = ROUND_START_DELAY;
+                    }
+                }
+                break;
+            }
+        }
+
+        // ── Restart key ─────────────────────────────────────────────
+        if (this.input.wasPressed('r')) {
+            this._startRound();
+        }
+    }
+
+    _updateRoundOver(dt, now) {
+        this.roundOverTimer -= dt;
+        this.particles.update(dt);
+        updateScreenShake(dt);
+
+        if (this.roundOverTimer <= 0) {
+            this._startRound();
+        }
+    }
+
+    _updateMatchOver(dt, now) {
+        this.particles.update(dt);
+
+        if (this.input.mouseJustPressed || this.input.wasPressed('enter')) {
+            // Reset scores and go to menu
+            for (const p of this.players) p.wins = 0;
+            this.state = STATE.MENU;
+        }
+    }
+
+    // ── Drawing ─────────────────────────────────────────────────────
+
+    _draw(now) {
+        const ctx = this.ctx;
+
+        if (this.state === STATE.MENU) {
+            this.menuRegions = drawMainMenu(
+                ctx, this.selectedMap, this.selectedDifficulty, this.menuHover
+            );
+            return;
+        }
+
+        // Apply screen shake
+        const shake = getScreenShake();
+        ctx.save();
+        ctx.translate(shake.x, shake.y);
+
+        // Background
+        this._drawBackground(ctx);
+
+        // Terrain
+        this.terrain.draw(ctx);
+
+        // Players
+        for (const p of this.players) {
+            p.draw(ctx, now);
+        }
+
+        // Projectiles
+        this.weapons.draw(ctx);
+
+        // Particles (on top)
+        this.particles.draw(ctx);
+
+        // HUD
+        drawHUD(ctx, this.players);
+
+        ctx.restore();
+
+        // Overlay states
+        if (this.state === STATE.COUNTDOWN) {
+            drawCountdown(ctx, this.countdownText);
+        } else if (this.state === STATE.ROUND_OVER) {
+            const loser = this.players.find(p => p.dead);
+            drawRoundOver(ctx, this.roundWinner, loser);
+        } else if (this.state === STATE.MATCH_OVER) {
+            drawMatchOver(ctx, this.roundWinner);
+        }
+    }
+
+    _drawBackground(ctx) {
+        const mapDef = MAP_DEFS[this.selectedMap];
+        if (!this._bgGrad || this._bgMapId !== mapDef.id) {
+            this._bgGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+            this._bgGrad.addColorStop(0, mapDef.bgGradientTop);
+            this._bgGrad.addColorStop(1, mapDef.bgGradientBottom);
+            this._bgMapId = mapDef.id;
+        }
+        ctx.fillStyle = this._bgGrad;
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+        // Parallax decorations based on map
+        if (mapDef.id === 'grasslands') {
+            this._drawClouds(ctx);
+        } else if (mapDef.id === 'volcanic') {
+            this._drawEmbers(ctx);
+        }
+    }
+
+    _drawClouds(ctx) {
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        const t = performance.now() * 0.00003;
+        for (let i = 0; i < 5; i++) {
+            const x = ((i * 300 + t * (200 + i * 50)) % (CANVAS_WIDTH + 200)) - 100;
+            const y = 40 + i * 35;
+            ctx.beginPath();
+            ctx.ellipse(x, y, 60 + i * 10, 18, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    _drawEmbers(ctx) {
+        const t = performance.now();
+        ctx.fillStyle = 'rgba(255,120,20,0.3)';
+        for (let i = 0; i < 15; i++) {
+            const phase = i * 1234.5;
+            const x = (Math.sin(t * 0.001 + phase) * 0.5 + 0.5) * CANVAS_WIDTH;
+            const y = CANVAS_HEIGHT - ((t * 0.03 + phase * 10) % CANVAS_HEIGHT);
+            const size = 1 + Math.sin(t * 0.003 + i) * 0.5;
+            ctx.fillRect(x, y, size, size);
+        }
+    }
+
+    // ── Game flow ───────────────────────────────────────────────────
+
+    _startMatch() {
+        // Reset scores
+        for (const p of this.players) p.wins = 0;
+
+        // Set AI difficulty
+        this.ai.setDifficulty(this.selectedDifficulty);
+
+        this._startRound();
+    }
+
+    _startRound() {
+        const mapDef = MAP_DEFS[this.selectedMap];
+
+        // Generate terrain
+        generateMap(mapDef, this.terrain);
+
+        // Spawn players
+        const p0 = this.players[0];
+        const p1 = this.players[1];
+
+        const spawnY0 = findSpawnY(this.terrain, mapDef.spawnLeft[0], p0.height);
+        const spawnY1 = findSpawnY(this.terrain, mapDef.spawnRight[0], p1.height);
+
+        p0.reset(mapDef.spawnLeft[0], spawnY0);
+        p1.reset(mapDef.spawnRight[0], spawnY1);
+
+        // Clear systems
+        this.weapons.clear();
+        this.particles.clear();
+        clearDamageNumbers();
+        this.roundWinner = null;
+        this._bgMapId = null; // force bg rebuild
+
+        // Re-link AI
+        this.ai.self   = p1;
+        this.ai.target = p0;
+        this.ai.terrain = this.terrain;
+        this.ai.weapons = this.weapons;
+
+        // Countdown
+        this.state = STATE.COUNTDOWN;
+        this.countdownTimer = 2500;
+    }
+}
