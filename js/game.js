@@ -181,6 +181,11 @@ export class Game {
     }
 
     _updateCountdown(dt, now) {
+        if (this.input.wasPressed('escape')) {
+            this._returnToMenu();
+            return;
+        }
+
         this.countdownTimer -= dt;
 
         if (this.countdownTimer > 1500) {
@@ -306,13 +311,21 @@ export class Game {
             }
         }
 
-        // ── Restart key ─────────────────────────────────────────────
+        // ── Restart / Exit ────────────────────────────────────────────
         if (this.input.wasPressed('r')) {
             this._startRound();
+        }
+        if (this.input.wasPressed('escape')) {
+            this._returnToMenu();
         }
     }
 
     _updateRoundOver(dt, now) {
+        if (this.input.wasPressed('escape')) {
+            this._returnToMenu();
+            return;
+        }
+
         this.roundOverTimer -= dt;
         this.particles.update(dt);
         updateScreenShake(dt);
@@ -325,11 +338,20 @@ export class Game {
     _updateMatchOver(dt, now) {
         this.particles.update(dt);
 
-        if (this.input.mouseJustPressed || this.input.wasPressed('enter')) {
-            // Reset scores and go to menu
-            for (const p of this.players) p.wins = 0;
-            this.state = STATE.MENU;
+        if (this.input.mouseJustPressed || this.input.wasPressed('enter') ||
+            this.input.wasPressed('escape')) {
+            this._returnToMenu();
         }
+    }
+
+    /** Cleanly return to the main menu from any game state. */
+    _returnToMenu() {
+        for (const p of this.players) p.wins = 0;
+        this.weapons.clear();
+        this.particles.clear();
+        clearDamageNumbers();
+        this.roundWinner = null;
+        this.state = STATE.MENU;
     }
 
     // ── Drawing ─────────────────────────────────────────────────────

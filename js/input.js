@@ -67,7 +67,7 @@ export class InputManager {
         }
         this.keys.add(key);
         // Prevent default for game keys to stop page scrolling etc.
-        if (['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d'].includes(key)) {
+        if (['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','escape'].includes(key)) {
             e.preventDefault();
         }
     }

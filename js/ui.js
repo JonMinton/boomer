@@ -91,6 +91,12 @@ export function drawHUD(ctx, players) {
 
     // Score
     _drawScore(ctx, players);
+
+    // Exit hint
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('ESC: Menu', CANVAS_WIDTH - 10, 18);
 }
 
 function _drawHealthBar(ctx, player) {
@@ -435,7 +441,7 @@ export function drawMatchOver(ctx, winner) {
 
     ctx.fillStyle = '#ccc';
     ctx.font = '18px monospace';
-    ctx.fillText('Click or press ENTER to return to menu', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60);
+    ctx.fillText('Click / ENTER / ESC to return to menu', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60);
 }
 
 /**

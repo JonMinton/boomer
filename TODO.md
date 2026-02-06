@@ -10,6 +10,13 @@ An alternative to toroidal screen wrapping. Players move circularly around the t
 - Projectile trajectories curving under radial gravity
 - AI pathfinding adapted to curved surfaces
 
+### Headshot / body-shot damage zones
+Differentiate damage based on where a projectile hits a player. The player model has a distinct head and body region. Headshots (upper hitbox) would deal bonus damage (e.g. 1.5× multiplier), while body shots deal standard damage. This particularly rewards sniper accuracy and adds skill depth. Would need:
+- Split player AABB into head and body sub-regions
+- Explosion processing to check which zone the blast centre is nearest
+- Headshot visual/audio feedback (different particle colour, "HEADSHOT!" damage number)
+- AI aim adjustment per difficulty (harder AI aims for the head more often)
+
 ### Lava pressure simulation (Volcanic map)
 Dynamic lava behaviour: terrain weakening from heat exposure → structural breach → lava spew/flow → cooling to solid magma. Would make the Volcanic map feel alive and add a time-pressure element.
 
@@ -55,3 +62,5 @@ Some ideas for future weapons:
 - [x] Sniper rifle and cluster bomb weapons
 - [x] Physics rebalancing (75% charge at 45° covers full screen)
 - [x] Toroidal screen wrapping with menu toggle
+- [x] Exit game / return to menu (Escape key from any state)
+- [x] Sniper rifle damage buff (45→65, two-hit kill)
