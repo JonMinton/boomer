@@ -65,7 +65,8 @@ export class Game {
         // Menu state
         this.selectedMap        = 0;
         this.selectedDifficulty = 'MEDIUM';
-        this.menuHover = { map: null, diff: null, start: false };
+        this.wrapScreen         = false;
+        this.menuHover = { map: null, diff: null, start: false, wrap: false };
         this.menuRegions = null;
 
         // Countdown
@@ -128,7 +129,7 @@ export class Game {
         if (this.menuRegions) {
             const mx = this.input.mouseX;
             const my = this.input.mouseY;
-            this.menuHover = { map: null, diff: null, start: false };
+            this.menuHover = { map: null, diff: null, start: false, wrap: false };
 
             for (const r of this.menuRegions.mapRegions) {
                 if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
@@ -145,6 +146,18 @@ export class Game {
                     this.menuHover.diff = r.key;
                     if (this.input.mouseJustPressed) {
                         this.selectedDifficulty = r.key;
+                        resumeAudio();
+                    }
+                }
+            }
+
+            // Wrap toggle
+            if (this.menuRegions.wrapRegion) {
+                const wr = this.menuRegions.wrapRegion;
+                if (mx >= wr.x && mx <= wr.x + wr.w && my >= wr.y && my <= wr.y + wr.h) {
+                    this.menuHover.wrap = true;
+                    if (this.input.mouseJustPressed) {
+                        this.wrapScreen = !this.wrapScreen;
                         resumeAudio();
                     }
                 }
@@ -282,6 +295,17 @@ export class Game {
             }
         }
 
+        // ── World bounds / screen wrapping ────────────────────────
+        for (const p of this.players) {
+            if (p.dead) continue;
+            if (this.wrapScreen) {
+                if (p.x + p.width < 0) p.x += CANVAS_WIDTH;
+                else if (p.x > CANVAS_WIDTH) p.x -= CANVAS_WIDTH;
+            } else {
+                p.x = clamp(p.x, 0, CANVAS_WIDTH - p.width);
+            }
+        }
+
         // ── Restart key ─────────────────────────────────────────────
         if (this.input.wasPressed('r')) {
             this._startRound();
@@ -315,7 +339,8 @@ export class Game {
 
         if (this.state === STATE.MENU) {
             this.menuRegions = drawMainMenu(
-                ctx, this.selectedMap, this.selectedDifficulty, this.menuHover
+                ctx, this.selectedMap, this.selectedDifficulty,
+                this.menuHover, this.wrapScreen
             );
             return;
         }
@@ -331,9 +356,23 @@ export class Game {
         // Terrain
         this.terrain.draw(ctx);
 
-        // Players
+        // Players (with wrap ghost)
         for (const p of this.players) {
             p.draw(ctx, now);
+            if (this.wrapScreen && !p.dead) {
+                // Draw ghost on opposite edge when near a boundary
+                if (p.x < p.width) {
+                    ctx.save();
+                    ctx.translate(CANVAS_WIDTH, 0);
+                    p.draw(ctx, now);
+                    ctx.restore();
+                } else if (p.x + p.width > CANVAS_WIDTH - p.width) {
+                    ctx.save();
+                    ctx.translate(-CANVAS_WIDTH, 0);
+                    p.draw(ctx, now);
+                    ctx.restore();
+                }
+            }
         }
 
         // Projectiles
@@ -409,6 +448,9 @@ export class Game {
 
         // Set AI difficulty
         this.ai.setDifficulty(this.selectedDifficulty);
+
+        // Sync wrap mode to weapon system
+        this.weapons.wrapScreen = this.wrapScreen;
 
         this._startRound();
     }

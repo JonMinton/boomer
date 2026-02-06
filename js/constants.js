@@ -105,8 +105,8 @@ export const WEAPONS = Object.freeze({
         damage:          28,
         blastRadius:     34,
         terrainDestruct: 0.85,
-        speed:           7,
-        gravity:         0.22,
+        speed:           12,
+        gravity:         0.07,    // light arc — 75% charge at 45° ≈ full screen
         cooldown:        1100,
         knockback:       6,
         pellets:         1,
@@ -118,8 +118,8 @@ export const WEAPONS = Object.freeze({
         colour:          '#6b4',
         // Charge-to-fire mechanic
         chargeable:      true,
-        minSpeed:        3,
-        maxSpeed:        11,
+        minSpeed:        1.5,
+        maxSpeed:        22,
         maxChargeTime:   1500,  // ms to reach full charge
     },
     SNIPER_RIFLE: {
@@ -146,8 +146,8 @@ export const WEAPONS = Object.freeze({
         damage:          15,       // per bomblet
         blastRadius:     18,
         terrainDestruct: 0.7,
-        speed:           6.5,
-        gravity:         0.18,
+        speed:           12,
+        gravity:         0.08,    // slightly heavier than grenade
         cooldown:        1800,
         knockback:       4,
         pellets:         1,
@@ -159,8 +159,8 @@ export const WEAPONS = Object.freeze({
         colour:          '#fa5',
         // Charge-to-fire mechanic
         chargeable:      true,
-        minSpeed:        3,
-        maxSpeed:        10,
+        minSpeed:        1.5,
+        maxSpeed:        23,
         maxChargeTime:   1500,
         // Cluster split config
         clusterCount:    5,

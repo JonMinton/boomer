@@ -200,8 +200,7 @@ export class Player {
         this.y += this.vy * dtFactor;
         this._resolveVertical(terrain);
 
-        // World bounds
-        this.x = clamp(this.x, 0, terrain.width - this.width);
+        // World bounds (horizontal clamping handled by Game to support wrap mode)
 
         // Fell off the bottom → take damage
         if (this.y > terrain.height + 50) {

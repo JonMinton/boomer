@@ -38,6 +38,7 @@ export class WeaponSystem {
     constructor(terrain, particleSystem) {
         this.terrain   = terrain;
         this.particles = particleSystem;
+        this.wrapScreen = false;
 
         /** @type {Projectile[]} */
         this.projectiles = [];
@@ -119,11 +120,22 @@ export class WeaponSystem {
                 this.particles.emitTrail(p.x, p.y, p.weapon.trailColour);
             }
 
-            // Out of bounds check
-            if (p.x < -50 || p.x > WORLD_WIDTH + 50 ||
-                p.y < -200 || p.y > WORLD_HEIGHT + 50) {
-                p.alive = false;
-                continue;
+            // Out of bounds / wrapping
+            if (this.wrapScreen) {
+                // Horizontal wrap
+                if (p.x < 0) p.x += WORLD_WIDTH;
+                else if (p.x > WORLD_WIDTH) p.x -= WORLD_WIDTH;
+                // Still die if falling off bottom or flying too high
+                if (p.y < -400 || p.y > WORLD_HEIGHT + 50) {
+                    p.alive = false;
+                    continue;
+                }
+            } else {
+                if (p.x < -50 || p.x > WORLD_WIDTH + 50 ||
+                    p.y < -200 || p.y > WORLD_HEIGHT + 50) {
+                    p.alive = false;
+                    continue;
+                }
             }
 
             // Max range (shotgun)

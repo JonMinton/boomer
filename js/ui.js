@@ -226,9 +226,10 @@ function _drawScore(ctx, players) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} selectedMap - Index into MAP_DEFS
  * @param {string} selectedDifficulty - Key into AI_DIFFICULTY
- * @param {Object} hover - { map: number|null, diff: string|null, start: boolean }
+ * @param {Object} hover - { map: number|null, diff: string|null, start: boolean, wrap: boolean }
+ * @param {boolean} wrapScreen - Whether screen wrapping is enabled
  */
-export function drawMainMenu(ctx, selectedMap, selectedDifficulty, hover) {
+export function drawMainMenu(ctx, selectedMap, selectedDifficulty, hover, wrapScreen = false) {
     // Background
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -327,9 +328,48 @@ export function drawMainMenu(ctx, selectedMap, selectedDifficulty, hover) {
         ctx.fillText(d.label, bx + bw / 2, by + 30);
     }
 
+    // Screen wrap toggle
+    const wrapX = CANVAS_WIDTH / 2 - 110;
+    const wrapY = 430;
+    const wrapW = 220;
+    const wrapH = 40;
+
+    ctx.fillStyle = hover.wrap
+        ? 'rgba(255,255,255,0.15)'
+        : 'rgba(255,255,255,0.05)';
+    ctx.fillRect(wrapX, wrapY, wrapW, wrapH);
+
+    if (wrapScreen) {
+        ctx.strokeStyle = '#ff6b35';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(wrapX, wrapY, wrapW, wrapH);
+    }
+
+    // Checkbox visual
+    const cbX = wrapX + 12;
+    const cbY = wrapY + 12;
+    const cbS = 16;
+    ctx.strokeStyle = wrapScreen ? '#ff6b35' : '#777';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cbX, cbY, cbS, cbS);
+    if (wrapScreen) {
+        ctx.fillStyle = '#ff6b35';
+        ctx.fillRect(cbX + 3, cbY + 3, cbS - 6, cbS - 6);
+    }
+
+    ctx.fillStyle = wrapScreen ? '#fff' : '#aaa';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Screen Wrap', cbX + cbS + 10, wrapY + 26);
+
+    ctx.fillStyle = '#888';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('toroidal edges', wrapX + wrapW - 10, wrapY + 26);
+
     // Start button
     const startX = CANVAS_WIDTH / 2 - 100;
-    const startY = 460;
+    const startY = 500;
     const startW = 200;
     const startH = 50;
 
@@ -344,8 +384,8 @@ export function drawMainMenu(ctx, selectedMap, selectedDifficulty, hover) {
     ctx.fillStyle = '#666';
     ctx.font = '12px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('WASD / Arrows: Move  |  Mouse: Aim  |  Click: Fire  |  1-5: Switch Weapon  |  Space: Jump', CANVAS_WIDTH / 2, 560);
-    ctx.fillText('Q: Next Weapon  |  R: Restart Round  |  Hold Click: Charge (Grenade / Cluster)', CANVAS_WIDTH / 2, 580);
+    ctx.fillText('WASD / Arrows: Move  |  Mouse: Aim  |  Click: Fire  |  1-5: Switch Weapon  |  Space: Jump', CANVAS_WIDTH / 2, 600);
+    ctx.fillText('Q: Next Weapon  |  R: Restart Round  |  Hold Click: Charge (Grenade / Cluster)', CANVAS_WIDTH / 2, 620);
 
     // Return clickable regions for the game to use
     return {
@@ -355,6 +395,7 @@ export function drawMainMenu(ctx, selectedMap, selectedDifficulty, hover) {
         diffRegions: diffKeys.map((key, i) => ({
             x: diffStartX + i * 150, y: 355, w: 135, h: 50, key,
         })),
+        wrapRegion: { x: wrapX, y: wrapY, w: wrapW, h: wrapH },
         startRegion: { x: startX, y: startY, w: startW, h: startH },
     };
 }
