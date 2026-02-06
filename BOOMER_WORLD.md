@@ -115,6 +115,24 @@ Players and projectile sprites receive the same treatment — their brightness i
 
 **Performance**: Negligible. The dot product and colour multiply are a few ALU ops per fragment — the shader is already doing a polar-to-screen coordinate transform which is far more expensive.
 
+### Local light sources (dark-side illumination)
+
+The solar model above leaves the far side of the ring quite dark (ambient only). Local point lights bring it to life and create tactical variety:
+
+- **Lava** — already a material type in V1. In World, lava pixels emit radial light (warm orange, radius ~40-60px equivalent in polar space). This makes Volcanic maps self-illuminating on the dark side and gives lava a dual role: danger zone and light source.
+- **Fires / candles** — static point lights placed during map generation. Could be part of Urban maps (street lamps, lit windows) or cave/bunker interiors. Each emits a warm flicker (small random intensity variation per frame) with a defined light radius.
+- **Weapon muzzle flash** — transient point light spawned when a weapon fires. Bright, very short duration (~100-200ms), radius proportional to weapon blast size. Sniper gets a crisp white flash; rocket gets a large warm bloom; shotgun gets a broad but brief flash. This briefly reveals players in shadow when they fire, creating a stealth trade-off: firing in the dark gives away your position.
+- **Explosions** — similar to muzzle flash but larger radius and longer decay (300-500ms). Illuminates a significant area around the blast site, making chain explosions visually dramatic in the dark.
+- **Projectile trails** — subtle moving light along the projectile path. Particularly visible for rockets (warm trail glow) and sniper tracers (blue-white streak). Creates visible arcing light paths that look striking across the dark side of the ring.
+
+**Implementation**: Maintain a dynamic list of point lights `[{ θ, r, radius, intensity, colour, decay }]`. In the terrain fragment shader, for each pixel, sum contributions from nearby lights using inverse-square falloff: `contribution = intensity * max(0, 1 - (dist / radius)²)`. Cull lights outside the current viewport arc for performance.
+
+For sprites (players, projectiles), compute the total light at their position from the point-light list and the solar model, then apply as a tint multiplier — same pipeline as solar lighting but with additive local terms.
+
+**Performance considerations**: Each point light adds a distance calculation per fragment. With GPU-side computation this is fast, but large numbers of simultaneous lights (>20-30 in viewport) could become costly. Mitigations: cull lights outside viewport, cap simultaneous lights, use a light-radius cutoff to skip distant lights early. Muzzle flash and explosion lights are very short-lived so the average light count should stay low.
+
+**Gameplay implications**: Firing in the dark side reveals your position (muzzle flash + trail). This creates a stealth-vs-aggression tension: do you hold fire in the dark to stay hidden, or fire and risk retaliation? Lava areas on the dark side become double-edged — the light makes you visible but the terrain is dangerous to approach. Map designers can place strategic light sources to create "lit corridors" through otherwise dark terrain.
+
 ## Dependency / tooling
 
 - **PixiJS** (or raw WebGL) for GPU-accelerated terrain rendering
