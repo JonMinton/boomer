@@ -20,6 +20,16 @@ Differentiate damage based on where a projectile hits a player. The player model
 ### Lava pressure simulation (Volcanic map)
 Dynamic lava behaviour: terrain weakening from heat exposure → structural breach → lava spew/flow → cooling to solid magma. Would make the Volcanic map feel alive and add a time-pressure element.
 
+### Weapon upgrade system (post-round)
+After winning a round, the player chooses one of their weapons to upgrade — each weapon has two upgrade paths that change its mechanics. Examples:
+- **Sniper → Beam Laser**: Hold to fire a continuous straight-line beam that vaporises terrain along its path and deals higher damage. The beam traces from the player through the cursor and beyond. Trades the precision single-shot for sustained terrain destruction.
+- **Sniper → Piercing Round**: Bullet passes through the first target and continues (reduced damage on second hit).
+- **Rocket → MIRV**: Splits into 3 smaller warheads at apex of arc.
+- **Rocket → Napalm**: Leaves burning ground on impact (area denial).
+- **Shotgun → Slug**: Single high-damage projectile, longer range.
+- **Shotgun → Incendiary**: Pellets ignite terrain on contact.
+This creates diverging builds across a match and strategic choices about which weapon to invest in.
+
 ## Gameplay improvements
 
 ### Terrain-aware wrapping
@@ -67,3 +77,5 @@ Some ideas for future weapons:
 - [x] Finite ammo system with parachute crate drops (grenade 8, sniper 3, cluster 2)
 - [x] Ammo-aware AI weapon selection with fallback logic
 - [x] Weapon HUD ammo counters with empty-weapon visual feedback
+- [x] Sniper laser sight mechanic (hold to aim with visible laser, release to fire)
+- [x] AI sighting state for sniper (holds laser for difficulty-scaled duration)

@@ -13,6 +13,7 @@ const STATE = Object.freeze({
     MOVE:   'move',
     AIM:    'aim',
     CHARGE: 'charge',
+    SIGHT:  'sight',
     FIRE:   'fire',
     DODGE:  'dodge',
 });
@@ -92,6 +93,7 @@ export class AIController {
             case STATE.MOVE:    this._stateMove(dt, now); break;
             case STATE.AIM:     this._stateAim(dt, now); break;
             case STATE.CHARGE:  this._stateCharge(dt, now); break;
+            case STATE.SIGHT:   this._stateSight(dt, now); break;
             case STATE.FIRE:    this._stateFire(dt, now); break;
             case STATE.DODGE:   this._stateDodge(dt, now); break;
         }
@@ -217,9 +219,11 @@ export class AIController {
             this.aimTarget.y = predY + noiseY * 0.5;
         }
 
-        // Wait a beat, then fire (or charge if chargeable)
+        // Wait a beat, then fire (branched by weapon type)
         if (this.stateTime > 200 + (1 - this.difficulty.moveSkill) * 400) {
-            if (w.chargeable) {
+            if (w.sighted) {
+                this._transition(STATE.SIGHT);
+            } else if (w.chargeable) {
                 this._transition(STATE.CHARGE);
             } else {
                 this._transition(STATE.FIRE);
@@ -274,6 +278,58 @@ export class AIController {
         // Dodge even while charging (abort charge)
         if (this._shouldDodge()) {
             s.charging = false;
+            this._transition(STATE.DODGE);
+        }
+    }
+
+    _stateSight(dt, now) {
+        // AI holds the laser sight for a difficulty-scaled duration, then fires
+        this.moveDir = 0;
+        const s = this.self;
+        const w = s.weapon;
+
+        if (!s.sighting && s.canFire(now)) {
+            s.startSighting(now);
+            // Higher-skill AI holds sight longer for better aim stabilisation
+            const baseDuration = lerp(300, 800, this.difficulty.moveSkill);
+            // Add some randomness so it's not robotic
+            this._targetSightDuration = baseDuration + randRange(-150, 200);
+        }
+
+        // Continue tracking the target while sighting
+        const t = this.target;
+        const predTime = dist(s.cx, s.cy, t.cx, t.cy) / w.speed;
+        const predMult = clamp(this.difficulty.moveSkill, 0, 1);
+        const offset = this.difficulty.aimOffset;
+        // Reduce jitter during sighting — the longer we sight, the steadier
+        const sightFrac = s.getSightFraction(now);
+        const jitterReduction = lerp(1, 0.3, clamp(sightFrac * 3, 0, 1));
+        this.aimTarget.x = t.cx + this.targetVelX * predTime * predMult * 0.5
+                         + (Math.random() - 0.5) * offset * 50 * jitterReduction;
+        this.aimTarget.y = t.cy + this.targetVelY * predTime * predMult * 0.5
+                         + (Math.random() - 0.5) * offset * 50 * jitterReduction;
+
+        // Release and fire when target duration reached
+        if (s.sighting) {
+            const elapsed = now - s.sightStart;
+            if (elapsed >= (this._targetSightDuration || 500)) {
+                s.releaseSighting();
+                const muzzle = s.getMuzzle();
+                this.weapons.fire(w, muzzle.x, muzzle.y, s.aimAngle, s.index);
+                s.consumeAmmo();
+                s.lastFireTime = now;
+                this.reactionTimer = -w.cooldown * (1 / this.difficulty.fireRateMult);
+                this._transition(STATE.IDLE);
+                return;
+            }
+        } else {
+            // Can't fire yet — reassess
+            this._transition(STATE.ASSESS);
+        }
+
+        // Dodge even while sighting (abort)
+        if (this._shouldDodge()) {
+            s.releaseSighting();
             this._transition(STATE.DODGE);
         }
     }

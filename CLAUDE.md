@@ -53,14 +53,14 @@ python3 -m http.server 8000
 1. **Rocket Launcher** — medium speed, large blast radius, high terrain destruction. Unlimited ammo.
 2. **Shotgun** — 8 pellets in a spread, short range (maxRange: 400), minimal terrain destruction. Unlimited ammo.
 3. **Grenade Launcher** — chargeable arc weapon, good terrain destruction, gravity 0.07. 8 rounds, +4 per crate.
-4. **Sniper Rifle** — very fast projectile (speed 32), high damage (65, two-hit kill), negligible terrain destruction, tracer visual. 3 rounds, +2 per crate.
+4. **Sniper Rifle** — very fast projectile (speed 32), high damage (65, two-hit kill), negligible terrain destruction. **Laser sight mechanic**: hold click to aim (visible red laser traces from muzzle to terrain/edge), release to fire. Auto-fires at 3s max sight time. 3 rounds, +2 per crate.
 5. **Cluster Bomb** — chargeable, splits into 5 sub-munitions on impact (`isSub` flag prevents recursive splitting). High self-damage risk. 2 rounds, +1 per crate.
 
 ### AI state machine
 
-States: IDLE → ASSESS → MOVE → AIM → CHARGE → FIRE → DODGE
+States: IDLE → ASSESS → MOVE → AIM → CHARGE / SIGHT → FIRE → DODGE
 
-The AI scales with three difficulty presets (EASY/MEDIUM/HARD) which affect: reaction delay, aim jitter, dodge probability, charge accuracy, and weapon selection intelligence. The CHARGE state calculates target charge duration based on distance to opponent and difficulty scaling.
+The AI scales with three difficulty presets (EASY/MEDIUM/HARD) which affect: reaction delay, aim jitter, dodge probability, charge accuracy, and weapon selection intelligence. The CHARGE state calculates target charge duration based on distance to opponent and difficulty scaling. The SIGHT state handles sniper aiming — the AI holds the laser sight for a difficulty-scaled duration (higher skill = longer hold for steadier aim) before firing, with jitter reducing over the sighting period.
 
 ### Screen wrapping
 

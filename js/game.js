@@ -213,8 +213,24 @@ export class Game {
         human.applyInput(moveDir, jump);
         human.aimAt(this.input.mouseX, this.input.mouseY);
 
-        // Fire — with charge support for chargeable weapons
-        if (human.weapon.chargeable) {
+        // Fire — branched by weapon type
+        if (human.weapon.sighted) {
+            // Sighted weapon (sniper): hold to aim with laser, release to fire
+            if (this.input.mouseJustPressed && human.canFire(now)) {
+                human.startSighting(now);
+            }
+            if (human.sighting) {
+                // Auto-fire at max sight time
+                const frac = human.getSightFraction(now);
+                if (!this.input.mouseDown || frac >= 1) {
+                    human.releaseSighting();
+                    const muzzle = human.getMuzzle();
+                    this.weapons.fire(human.weapon, muzzle.x, muzzle.y, human.aimAngle, human.index);
+                    human.consumeAmmo();
+                    human.lastFireTime = now;
+                }
+            }
+        } else if (human.weapon.chargeable) {
             // Chargeable weapon: hold to charge, release to fire
             if (this.input.mouseJustPressed && human.canFire(now)) {
                 human.startCharge(now);
@@ -237,14 +253,14 @@ export class Game {
             }
         }
 
-        // Weapon switching (cancel charge if switching)
-        const switchWeapon = (idx) => { human.charging = false; human.setWeapon(idx); };
+        // Weapon switching (cancel charge/sighting if switching)
+        const switchWeapon = (idx) => { human.charging = false; human.sighting = false; human.setWeapon(idx); };
         if (this.input.wasPressed('1')) switchWeapon(0);
         if (this.input.wasPressed('2')) switchWeapon(1);
         if (this.input.wasPressed('3')) switchWeapon(2);
         if (this.input.wasPressed('4')) switchWeapon(3);
         if (this.input.wasPressed('5')) switchWeapon(4);
-        if (this.input.wasPressed('q')) { human.charging = false; human.nextWeapon(); }
+        if (this.input.wasPressed('q')) { human.charging = false; human.sighting = false; human.nextWeapon(); }
 
         // ── AI update ───────────────────────────────────────────────
         this.ai.update(dt, now);
@@ -398,6 +414,13 @@ export class Game {
         // Terrain
         this.terrain.draw(ctx);
 
+        // Laser sight (draw before players so it's behind them)
+        for (const p of this.players) {
+            if (p.sighting && !p.dead) {
+                this._drawLaserSight(ctx, p, now);
+            }
+        }
+
         // Players (with wrap ghost)
         for (const p of this.players) {
             p.draw(ctx, now);
@@ -483,6 +506,70 @@ export class Game {
             const size = 1 + Math.sin(t * 0.003 + i) * 0.5;
             ctx.fillRect(x, y, size, size);
         }
+    }
+
+    /**
+     * Draw a red laser sight line from the player's muzzle along the aim
+     * angle until it hits terrain or exits the canvas.
+     */
+    _drawLaserSight(ctx, player, now) {
+        const muzzle = player.getMuzzle();
+        const cosA = Math.cos(player.aimAngle);
+        const sinA = Math.sin(player.aimAngle);
+        const step = 3;
+        const maxDist = 1400; // slightly beyond canvas diagonal
+
+        // Ray-march to find the first solid pixel or canvas exit
+        let endX = muzzle.x;
+        let endY = muzzle.y;
+        for (let d = 0; d < maxDist; d += step) {
+            const rx = muzzle.x + cosA * d;
+            const ry = muzzle.y + sinA * d;
+            if (rx < -10 || rx > CANVAS_WIDTH + 10 || ry < -10 || ry > CANVAS_HEIGHT + 10) {
+                endX = rx;
+                endY = ry;
+                break;
+            }
+            if (this.terrain.isSolid(Math.round(rx), Math.round(ry))) {
+                endX = rx;
+                endY = ry;
+                break;
+            }
+            endX = rx;
+            endY = ry;
+        }
+
+        // Intensity ramps up with sighting duration and pulses gently
+        const frac = player.getSightFraction(now);
+        const pulse = 0.85 + 0.15 * Math.sin(now * 0.008);
+        const baseAlpha = clamp(0.2 + frac * 0.6, 0, 1) * pulse;
+
+        // Thin bright core
+        ctx.save();
+        ctx.strokeStyle = `rgba(255,40,30,${baseAlpha})`;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.moveTo(muzzle.x, muzzle.y);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Wider glow
+        ctx.strokeStyle = `rgba(255,80,60,${baseAlpha * 0.3})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(muzzle.x, muzzle.y);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        // Dot at impact point
+        ctx.fillStyle = `rgba(255,60,40,${baseAlpha * 0.9})`;
+        ctx.beginPath();
+        ctx.arc(endX, endY, 3 + frac * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
     }
 
     // ── Game flow ───────────────────────────────────────────────────

@@ -142,6 +142,9 @@ export const WEAPONS = Object.freeze({
         fuseTime:        0,
         trailColour:     [180, 210, 255],
         projRadius:      1.5,
+        // Laser sight: hold to aim (visible red line), release to fire
+        sighted:         true,
+        maxSightTime:    3000,  // ms before auto-fire (prevents indefinite holding)
         colour:          '#8af',
         ammo:            3,       // starting rounds
         ammoPickup:      2,       // rounds per crate

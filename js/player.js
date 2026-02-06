@@ -46,6 +46,10 @@ export class Player {
         this.charging    = false;
         this.chargeStart = 0;
 
+        // Laser sight state (sniper)
+        this.sighting    = false;
+        this.sightStart  = 0;
+
         // Ammo tracking: { weaponId: count } — null entries mean unlimited
         this.ammo = {};
         this._initAmmo();
@@ -94,6 +98,8 @@ export class Player {
         this.lastFireTime = 0;
         this.charging = false;
         this.chargeStart = 0;
+        this.sighting = false;
+        this.sightStart = 0;
         this.damageFlashEnd = 0;
         this.onGround = false;
         this.spawnX = spawnX;
@@ -163,6 +169,29 @@ export class Player {
         this.charging = false;
         this.chargeStart = 0;
         return charge;
+    }
+
+    // ── Laser sight (sniper) ─────────────────────────────────────────
+
+    /** Begin sighting a sighted weapon. */
+    startSighting(now) {
+        if (this.weapon.sighted && !this.sighting) {
+            this.sighting = true;
+            this.sightStart = now;
+        }
+    }
+
+    /** Get sighting duration fraction (0-1). */
+    getSightFraction(now) {
+        if (!this.sighting || !this.weapon.sighted) return 0;
+        const elapsed = now - this.sightStart;
+        return clamp(elapsed / this.weapon.maxSightTime, 0, 1);
+    }
+
+    /** Release sight and fire. Resets sighting state. */
+    releaseSighting() {
+        this.sighting = false;
+        this.sightStart = 0;
     }
 
     /**
