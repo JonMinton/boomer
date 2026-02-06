@@ -89,6 +89,31 @@ Collision detection: sample the terrain grid at the projectile's `(θ_index, r_i
 - Polar-aware `destroyCircle()` / blast mapping
 - Map generation adapted for ring geometry (how do "grasslands" or "urban" translate to a circular world?)
 - Potentially: minimap showing full ring with player positions
+- Solar lighting system (see below)
+
+### Solar lighting
+
+A fixed Sun illuminates the ring from one direction. As the player traverses the circumference, the local brightness changes naturally based on the angle between the terrain surface normal (pointing radially outward) and the Sun direction vector.
+
+**Implementation**: The terrain fragment shader already knows each pixel's angular position θ. The Sun has a fixed direction vector `sunDir = (cos(sunAngle), sin(sunAngle))`. The surface outward normal at any point is `(cos(θ), sin(θ))`. The lighting intensity is:
+
+```
+brightness = ambient + (1 - ambient) * max(0, dot(normal, sunDir))
+```
+
+Where `ambient` ≈ 0.15–0.25 prevents the dark side from being unplayable. The final pixel colour is `terrainColour * brightness`.
+
+Players and projectile sprites receive the same treatment — their brightness is computed from their angular position in game.js and passed as a tint or alpha multiplier.
+
+**Colour temperature shift**: Rather than just dimming, shift the colour palette. Sunlit side gets a warm tint (multiply by a soft gold, e.g. `rgb(1.0, 0.95, 0.85)`), shadow side gets a cool tint (`rgb(0.7, 0.75, 0.9)`). This sells the effect far more than brightness alone.
+
+**Gameplay implications**:
+- **Visibility asymmetry**: Players on the dark side are harder to spot. This could be purely cosmetic or mechanically significant (e.g. AI accuracy penalty in low light, sniper tracer more visible against dark terrain).
+- **Tactical positioning**: The dark side becomes a stealth zone. Players might deliberately retreat into shadow. This creates a positional meta beyond just terrain height advantage.
+- **Map-specific lighting**: Volcanic maps could have lava glow that provides ambient illumination on the dark side. Urban maps might have lit windows. Grasslands could have fireflies or bioluminescence as subtle light sources in shadow.
+- **Dynamic Sun** (stretch goal): The Sun slowly orbits, so the light/dark zones shift over the course of a match. Forces players to adapt rather than camping in permanent shadow.
+
+**Performance**: Negligible. The dot product and colour multiply are a few ALU ops per fragment — the shader is already doing a polar-to-screen coordinate transform which is far more expensive.
 
 ## Dependency / tooling
 
@@ -103,6 +128,7 @@ Collision detection: sample the terrain grid at the projectile's `(θ_index, r_i
 - Render a static polar terrain ring segment on screen using WebGL/shader
 - Camera rotates to follow a controllable player walking along the surface
 - Radial gravity works (player falls towards centre, lands on terrain)
+- Solar lighting: terrain brightness varies with angle from Sun
 - No weapons, no AI, no destruction
 
 ### M2 — Core gameplay port
@@ -123,6 +149,9 @@ Collision detection: sample the terrain grid at the projectile's `(θ_index, r_i
 - Audio
 - Menu system with ring-radius / arc-width options
 - Minimap
+- Colour temperature shift (warm sunlit side, cool shadow side)
+- Map-specific ambient lighting (lava glow, lit windows, bioluminescence)
+- Stretch: dynamic Sun orbit over match duration
 
 ## Feedback log
 
