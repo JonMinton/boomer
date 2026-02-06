@@ -133,6 +133,18 @@ For sprites (players, projectiles), compute the total light at their position fr
 
 **Gameplay implications**: Firing in the dark side reveals your position (muzzle flash + trail). This creates a stealth-vs-aggression tension: do you hold fire in the dark to stay hidden, or fire and risk retaliation? Lava areas on the dark side become double-edged — the light makes you visible but the terrain is dangerous to approach. Map designers can place strategic light sources to create "lit corridors" through otherwise dark terrain.
 
+### AI behaviour in low light
+
+Lighting level must feed back into the AI controller — this is a gameplay mechanic, not just a visual effect. The AI should query the effective brightness at the target's position (sum of solar contribution + local point lights) and use it to modulate behaviour:
+
+- **Aim degradation**: Scale `aimOffset` by an inverse brightness factor. In full light the AI aims normally; at ambient-only darkness the jitter increases significantly (e.g. ×1.5–2.0 for HARD, ×2.0–3.0 for EASY). This makes the dark side a genuine defensive advantage rather than a cosmetic one.
+- **Detection delay**: In the ASSESS state, add a reaction penalty when the target is in shadow. The AI should take longer to transition from IDLE → ASSESS → AIM when it can't "see" the opponent clearly. Could be modelled as a multiplier on `reactionTime`.
+- **Muzzle flash reveal**: When the target fires (detectable via a `lastFireTime` change), temporarily reduce the aim/detection penalty for a short window (~200-400ms, matching the muzzle flash duration). This mechanically rewards the stealth trade-off: firing in the dark briefly makes you as visible as standing in sunlight.
+- **Sniper laser sight in darkness**: The laser sight is particularly visible against dark terrain. When the AI detects an incoming laser (a sighting player whose laser line passes near the AI's position), it should increase dodge probability regardless of lighting. Conversely, the AI's own laser in darkness is a bigger giveaway — higher-difficulty AI might prefer non-sighted weapons when positioning in shadow.
+- **Light-seeking behaviour**: Lower-difficulty AI could have a slight bias towards moving into lit areas (it "wants" to see), while higher-difficulty AI deliberately seeks shadow for the defensive advantage. This falls out naturally if the MOVE state considers brightness at candidate positions.
+
+**Implementation hook**: Add a `getLightAt(θ, r)` utility that sums solar + point-light contributions at a world position. The AI controller calls this for both its own position and the target's position each frame (cheap — one solar dot product plus iteration over nearby lights). The resulting brightness value (0–1) feeds into the modifiers above. This function is also useful for sprite tinting, so it serves double duty.
+
 ## Dependency / tooling
 
 - **PixiJS** (or raw WebGL) for GPU-accelerated terrain rendering
