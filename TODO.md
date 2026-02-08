@@ -31,6 +31,19 @@ After winning a round, the player chooses one of their weapons to upgrade — ea
 - **Shotgun → Incendiary**: Pellets ignite terrain on contact.
 This creates diverging builds across a match and strategic choices about which weapon to invest in.
 
+### Player and AI types / character classes
+Different player types with stat modifiers and AI behaviour profiles. Each type biases weapon preferences, movement patterns, and combat style. Examples:
+- **Mole** — faster dig rate (reduced cooldown, larger dig radius), AI behaviour biased towards tunnelling rather than surface travel. Prefers close-quarters combat underground.
+- **Sniper** — faster sight time, reduced aim jitter, AI prefers high ground and long-range engagements. Avoids close combat.
+- **Demolitions** — larger blast radii across all explosive weapons, AI favours area-denial and terrain destruction. Higher self-damage tolerance.
+- **Scout** — faster movement speed, higher jump, AI favours hit-and-run tactics with shotgun. Lower health to compensate.
+
+Implementation would need:
+- A `PlayerType` definition with stat multipliers (digCooldown, blastRadiusMult, moveSpeed, maxHealth, etc.)
+- AI behaviour profiles that bias the state machine (preferred weapons, preferred range, movement tendency)
+- Type selection on the main menu (for the human player) and per-difficulty AI type weighting
+- Visual differentiation (colour palette, size, or shape per type)
+
 ### Training room easter egg
 If the player destroys enough terrain in the training room to reach the far-left edge of the map and then walks slightly off-screen (past x=0), they find a hidden secret — a weapon or upgrade that persists into the next real game. This rewards thorough exploration of the training room and creates an incentive to experiment with terrain destruction. Implementation considerations:
 - Detect when the human player's x < some threshold (e.g. -20) while in training mode
@@ -52,7 +65,7 @@ The canvas is fixed at 1200×700. Consider scaling to fill the viewport while ma
 
 ### Additional weapons
 Some ideas for future weapons:
-- **Drill** — bores through terrain in a straight line, low damage to players but excellent for tunnelling
+- ~~**Drill**~~ — implemented as the Dig melee weapon (slot 1)
 - **Homing missile** — slow, weak, but tracks the opponent with limited turn radius
 - **Mine** — placed on terrain surface, detonates on proximity after an arming delay
 - **Grapple hook** — mobility tool rather than weapon, lets players swing across the map
@@ -89,3 +102,9 @@ Some ideas for future weapons:
 - [x] Sniper laser sight mechanic (hold to aim with visible laser, release to fire)
 - [x] AI sighting state for sniper (holds laser for difficulty-scaled duration)
 - [x] Sniper hitscan raycast (replaces travelling projectile — instant ray checks terrain + player bodies)
+- [x] Mobile/tablet warning screen (CSS media query, no JS)
+- [x] Feedback buttons on main menu (Report Bug / Suggest Feature → GitHub issues, Google Form fallback)
+- [x] GitHub issue templates (bug report, feature request)
+- [x] Grenade balance buff (damage ×2, radius +40%) — issue #1
+- [x] Smooth toroidal terrain seam (smoothstep edge blending) — issue #2
+- [x] Dig/melee weapon (slot 1, E key, tunnelling with horizontal push) — issue #3
