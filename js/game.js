@@ -647,7 +647,7 @@ export class Game {
         const mapDef = MAP_DEFS[this.selectedMap];
 
         // Generate terrain
-        generateMap(mapDef, this.terrain);
+        generateMap(mapDef, this.terrain, this.wrapScreen);
 
         // Spawn players
         const p0 = this.players[0];

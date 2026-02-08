@@ -55,9 +55,10 @@ export function normaliseAngle(a) {
  * @param {number} octaves - Layers of noise
  * @param {number} baseWavelength - Wavelength of the lowest frequency
  * @param {number} persistence - Amplitude falloff per octave
+ * @param {boolean} wrap - If true, ensure heights[0] ≈ heights[width-1] for toroidal maps
  * @returns {Float64Array}
  */
-export function generateHeightmap(width, octaves = 5, baseWavelength = 200, persistence = 0.5) {
+export function generateHeightmap(width, octaves = 5, baseWavelength = 200, persistence = 0.5, wrap = false) {
     const result = new Float64Array(width);
 
     for (let o = 0; o < octaves; o++) {
@@ -89,6 +90,24 @@ export function generateHeightmap(width, octaves = 5, baseWavelength = 200, pers
                 (-p0 + 3 * p1 - 3 * p2 + p3) * t3
             );
             result[x] += v * amplitude;
+        }
+    }
+
+    // Blend edges so the terrain wraps smoothly with no discontinuity
+    if (wrap) {
+        const blendW = Math.min(80, Math.floor(width / 6));
+        const leftOrig  = new Float64Array(blendW);
+        const rightOrig = new Float64Array(blendW);
+        for (let i = 0; i < blendW; i++) {
+            leftOrig[i]  = result[i];
+            rightOrig[i] = result[width - 1 - i];
+        }
+        for (let i = 0; i < blendW; i++) {
+            const t = i / blendW;                       // 0 at edge, 1 at interior
+            const smooth = t * t * (3 - 2 * t);         // smoothstep
+            const avg = (leftOrig[0] + rightOrig[0]) / 2;
+            result[i]             = lerp(avg, leftOrig[i],  smooth);
+            result[width - 1 - i] = lerp(avg, rightOrig[i], smooth);
         }
     }
 

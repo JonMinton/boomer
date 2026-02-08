@@ -28,11 +28,11 @@ export const MAP_DEFS = [
         name: 'Grasslands',
         bgGradientTop: '#87ceeb',
         bgGradientBottom: '#d4e6b5',
-        generate(terrain) {
+        generate(terrain, wrap = false) {
             const w = terrain.width;
             const h = terrain.height;
             const baseY = h * 0.55;
-            const heights = generateHeightmap(w, 5, 250, 0.45);
+            const heights = generateHeightmap(w, 5, 250, 0.45, wrap);
 
             for (let x = 0; x < w; x++) {
                 const surfaceY = Math.round(baseY + heights[x] * 120);
@@ -73,11 +73,11 @@ export const MAP_DEFS = [
         name: 'Desert',
         bgGradientTop: '#ffa94d',
         bgGradientBottom: '#f5deb3',
-        generate(terrain) {
+        generate(terrain, wrap = false) {
             const w = terrain.width;
             const h = terrain.height;
             const baseY = h * 0.6;
-            const heights = generateHeightmap(w, 4, 300, 0.3);
+            const heights = generateHeightmap(w, 4, 300, 0.3, wrap);
 
             for (let x = 0; x < w; x++) {
                 const surfaceY = Math.round(baseY + heights[x] * 80);
@@ -130,7 +130,7 @@ export const MAP_DEFS = [
         name: 'Urban Ruins',
         bgGradientTop: '#555566',
         bgGradientBottom: '#333344',
-        generate(terrain) {
+        generate(terrain, wrap = false) {
             const w = terrain.width;
             const h = terrain.height;
             const groundY = Math.round(h * 0.75);
@@ -198,11 +198,11 @@ export const MAP_DEFS = [
         name: 'Volcanic',
         bgGradientTop: '#1a0a0a',
         bgGradientBottom: '#3a1515',
-        generate(terrain) {
+        generate(terrain, wrap = false) {
             const w = terrain.width;
             const h = terrain.height;
             const baseY = h * 0.55;
-            const heights = generateHeightmap(w, 5, 180, 0.5);
+            const heights = generateHeightmap(w, 5, 180, 0.5, wrap);
 
             for (let x = 0; x < w; x++) {
                 const surfaceY = Math.round(baseY + heights[x] * 130);
@@ -291,10 +291,11 @@ function _carveHorizontalTunnel(terrain, startX, y, length, height) {
  * Apply a map definition to a terrain instance.
  * @param {MapDef} mapDef
  * @param {import('./terrain.js').Terrain} terrain
+ * @param {boolean} wrap - Whether screen wrapping is enabled
  */
-export function generateMap(mapDef, terrain) {
+export function generateMap(mapDef, terrain, wrap = false) {
     terrain.clear();
-    mapDef.generate(terrain);
+    mapDef.generate(terrain, wrap);
     terrain.dirty = true;
 }
 
