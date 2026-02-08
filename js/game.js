@@ -7,6 +7,7 @@ import {
     CANVAS_WIDTH, CANVAS_HEIGHT,
     MAX_HEALTH, WEAPON_LIST, ROUNDS_TO_WIN, ROUND_START_DELAY,
     AI_DIFFICULTY,
+    BUG_REPORT_URL, FEATURE_REQUEST_URL, FEEDBACK_FORM_URL,
 } from './constants.js';
 import { dist, clamp } from './utils.js';
 import { InputManager } from './input.js';
@@ -72,7 +73,7 @@ export class Game {
         this.selectedMap        = 0;
         this.selectedDifficulty = 'MEDIUM';
         this.wrapScreen         = false;
-        this.menuHover = { map: null, diff: null, start: false, wrap: false };
+        this.menuHover = { map: null, diff: null, start: false, wrap: false, bugReport: false, suggestFeature: false, feedbackForm: false };
         this.menuRegions = null;
 
         // Countdown
@@ -139,7 +140,7 @@ export class Game {
         if (this.menuRegions) {
             const mx = this.input.mouseX;
             const my = this.input.mouseY;
-            this.menuHover = { map: null, diff: null, start: false, wrap: false };
+            this.menuHover = { map: null, diff: null, start: false, wrap: false, bugReport: false, suggestFeature: false, feedbackForm: false };
 
             for (const r of this.menuRegions.mapRegions) {
                 if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
@@ -179,6 +180,34 @@ export class Game {
                 if (this.input.mouseJustPressed) {
                     resumeAudio();
                     this._startMatch();
+                }
+            }
+
+            // Feedback buttons
+            const br = this.menuRegions.bugReportRegion;
+            if (br && mx >= br.x && mx <= br.x + br.w && my >= br.y && my <= br.y + br.h) {
+                this.menuHover.bugReport = true;
+                if (this.input.mouseJustPressed) {
+                    window.open(BUG_REPORT_URL, '_blank');
+                    resumeAudio();
+                }
+            }
+
+            const sf = this.menuRegions.suggestFeatureRegion;
+            if (sf && mx >= sf.x && mx <= sf.x + sf.w && my >= sf.y && my <= sf.y + sf.h) {
+                this.menuHover.suggestFeature = true;
+                if (this.input.mouseJustPressed) {
+                    window.open(FEATURE_REQUEST_URL, '_blank');
+                    resumeAudio();
+                }
+            }
+
+            const ff = this.menuRegions.feedbackFormRegion;
+            if (ff && mx >= ff.x && mx <= ff.x + ff.w && my >= ff.y && my <= ff.y + ff.h) {
+                this.menuHover.feedbackForm = true;
+                if (this.input.mouseJustPressed) {
+                    window.open(FEEDBACK_FORM_URL, '_blank');
+                    resumeAudio();
                 }
             }
         }

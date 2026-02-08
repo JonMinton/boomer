@@ -254,3 +254,9 @@ export const CRATE = Object.freeze({
 // ── Round / scoring ─────────────────────────────────────────────────
 export const ROUNDS_TO_WIN = 3;
 export const ROUND_START_DELAY = 2000; // ms
+
+// ── Feedback ───────────────────────────────────────────────────────
+export const GITHUB_REPO_URL = 'https://github.com/JonMinton/boomer';
+export const BUG_REPORT_URL = `${GITHUB_REPO_URL}/issues/new?labels=bug&title=%5BBug%5D+`;
+export const FEATURE_REQUEST_URL = `${GITHUB_REPO_URL}/issues/new?labels=enhancement&title=%5BFeature%5D+`;
+export const FEEDBACK_FORM_URL = 'https://forms.gle/PLACEHOLDER';

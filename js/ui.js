@@ -6,6 +6,7 @@
 import {
     CANVAS_WIDTH, CANVAS_HEIGHT, MAX_HEALTH, WEAPON_LIST,
     AI_DIFFICULTY, ROUNDS_TO_WIN,
+    BUG_REPORT_URL, FEATURE_REQUEST_URL, FEEDBACK_FORM_URL,
 } from './constants.js';
 import { MAP_DEFS } from './maps.js';
 import { clamp, lerp } from './utils.js';
@@ -440,6 +441,45 @@ export function drawMainMenu(ctx, selectedMap, selectedDifficulty, hover, wrapSc
     ctx.fillText('WASD / Arrows: Move  |  Mouse: Aim  |  Click: Fire  |  1-5: Switch Weapon  |  Space: Jump', CANVAS_WIDTH / 2, 600);
     ctx.fillText('Q: Next Weapon  |  R: Restart Round  |  Hold: Charge (Grenade/Cluster) / Sight (Sniper)', CANVAS_WIDTH / 2, 620);
 
+    // Feedback buttons
+    const fbBtnW = 130;
+    const fbBtnH = 28;
+    const fbGap = 20;
+    const fbTotalW = fbBtnW * 2 + fbGap;
+    const fbStartX = CANVAS_WIDTH / 2 - fbTotalW / 2;
+    const fbY = 650;
+
+    // [!] Report Bug
+    const bugX = fbStartX;
+    ctx.fillStyle = hover.bugReport ? 'rgba(255,107,53,0.35)' : 'rgba(255,255,255,0.08)';
+    ctx.fillRect(bugX, fbY, fbBtnW, fbBtnH);
+    ctx.strokeStyle = hover.bugReport ? '#ff6b35' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bugX, fbY, fbBtnW, fbBtnH);
+    ctx.fillStyle = hover.bugReport ? '#ff6b35' : '#888';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('[!] Report Bug', bugX + fbBtnW / 2, fbY + 18);
+
+    // [+] Suggest Feature
+    const featX = fbStartX + fbBtnW + fbGap;
+    ctx.fillStyle = hover.suggestFeature ? 'rgba(255,107,53,0.35)' : 'rgba(255,255,255,0.08)';
+    ctx.fillRect(featX, fbY, fbBtnW, fbBtnH);
+    ctx.strokeStyle = hover.suggestFeature ? '#ff6b35' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(featX, fbY, fbBtnW, fbBtnH);
+    ctx.fillStyle = hover.suggestFeature ? '#ff6b35' : '#888';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('[+] Suggest Feature', featX + fbBtnW / 2, fbY + 18);
+
+    // Google Form fallback link
+    const formY = 690;
+    ctx.fillStyle = hover.feedbackForm ? '#ff6b35' : '#555';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('No GitHub account? Use this form', CANVAS_WIDTH / 2, formY);
+
     // Return clickable regions for the game to use
     return {
         mapRegions: MAP_DEFS.map((_, i) => ({
@@ -450,6 +490,9 @@ export function drawMainMenu(ctx, selectedMap, selectedDifficulty, hover, wrapSc
         })),
         wrapRegion: { x: wrapX, y: wrapY, w: wrapW, h: wrapH },
         startRegion: { x: startX, y: startY, w: startW, h: startH },
+        bugReportRegion: { x: bugX, y: fbY, w: fbBtnW, h: fbBtnH },
+        suggestFeatureRegion: { x: featX, y: fbY, w: fbBtnW, h: fbBtnH },
+        feedbackFormRegion: { x: CANVAS_WIDTH / 2 - 120, y: formY - 10, w: 240, h: 14 },
     };
 }
 
