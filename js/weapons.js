@@ -107,8 +107,8 @@ export class WeaponSystem {
      */
     _fireMelee(weapon, x, y, aimAngle, ownerIndex) {
         const range = weapon.meleeRange || 40;
-        const hitX = x + Math.cos(aimAngle) * (range * 0.7);
-        const hitY = y + Math.sin(aimAngle) * (range * 0.7);
+        const hitX = x + Math.cos(aimAngle) * (range * 0.42);
+        const hitY = y + Math.sin(aimAngle) * (range * 0.42);
 
         // Destroy terrain at the dig point
         const destructRadius = weapon.blastRadius * weapon.terrainDestruct;
