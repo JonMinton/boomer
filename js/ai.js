@@ -4,7 +4,7 @@
  * States: IDLE → ASSESS → MOVE → AIM → CHARGE → FIRE → DODGE
  */
 
-import { AI_DIFFICULTY, WEAPON_LIST, WORLD_WIDTH, WORLD_HEIGHT } from './constants.js';
+import { AI_DIFFICULTY, WEAPON_LIST, WORLD_WIDTH, WORLD_HEIGHT, GRAVITY } from './constants.js';
 import { dist, angle, randRange, normaliseAngle, clamp, lerp } from './utils.js';
 
 const STATE = Object.freeze({
@@ -269,6 +269,12 @@ export class AIController {
         if (s.charging) {
             const elapsed = now - s.chargeStart;
             if (elapsed >= (this._targetChargeDuration || 500)) {
+                // Self-damage safety check — abort charge if shot would land too close
+                if (this._wouldSelfDamage(s.getCharge(now))) {
+                    s.releaseCharge(now); // discard the charge without firing
+                    this._transition(STATE.ASSESS);
+                    return;
+                }
                 const charge = s.releaseCharge(now);
                 const muzzle = s.getMuzzle();
                 this.weapons.fire(w, muzzle.x, muzzle.y, s.aimAngle, s.index, charge);
@@ -346,6 +352,12 @@ export class AIController {
         this.moveDir = 0;
 
         if (this.self.canFire(now)) {
+            // Self-damage safety check — abort if shot would land too close
+            if (this._wouldSelfDamage()) {
+                this._transition(STATE.ASSESS);
+                return;
+            }
+
             this.wantFire = true;
 
             // Fire the weapon (non-chargeable)
@@ -472,6 +484,52 @@ export class AIController {
         }
 
         return nearest;
+    }
+
+    /**
+     * Estimate whether firing the current weapon would result in self-damage.
+     * Simulates a simplified projectile trajectory and checks if the impact
+     * point is within the weapon's blast radius of the AI.
+     * @param {number} [chargeFraction=1] - For chargeable weapons
+     * @returns {boolean} true if firing would likely cause self-damage
+     */
+    _wouldSelfDamage(chargeFraction = 1) {
+        const s = this.self;
+        const w = s.weapon;
+
+        // Only check explosive weapons with meaningful blast radii
+        if (w.blastRadius < 10) return false;
+
+        const muzzle = s.getMuzzle();
+        const speed = w.chargeable
+            ? w.minSpeed + (w.maxSpeed - w.minSpeed) * chargeFraction
+            : w.speed;
+
+        let px = muzzle.x;
+        let py = muzzle.y;
+        let vx = Math.cos(s.aimAngle) * speed;
+        let vy = Math.sin(s.aimAngle) * speed;
+        const grav = w.gravity * GRAVITY * 10;
+
+        // Simulate up to 120 steps (~2 seconds of flight)
+        for (let step = 0; step < 120; step++) {
+            vy += grav;
+            px += vx;
+            py += vy;
+
+            // Off-screen vertically — no concern
+            if (py > WORLD_HEIGHT + 50 || py < -100) return false;
+
+            // Hit terrain?
+            if (this.terrain.isSolid(Math.round(px), Math.round(py))) {
+                const blastR = w.blastRadius;
+                const d = dist(s.cx, s.cy, px, py);
+                // Dangerous if impact is within blast radius (with a small safety margin)
+                return d < blastR + 15;
+            }
+        }
+
+        return false;
     }
 
     /** Check if the AI has ammo for a weapon at the given index. */
