@@ -14,6 +14,40 @@ html, body {
     font-family: monospace;
 }
 
+#mobile-warning {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    color: #ccc;
+    text-align: center;
+    padding: 2rem;
+}
+
+#mobile-warning h1 {
+    font-size: 2.5rem;
+    color: #ff6644;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.3rem;
+}
+
+#mobile-warning p {
+    font-size: 1rem;
+    line-height: 1.8;
+    max-width: 400px;
+}
+
+@media (pointer: coarse), (max-width: 960px) {
+    #mobile-warning {
+        display: flex;
+    }
+    #game-container {
+        display: none !important;
+    }
+}
+
 #game-container {
     display: flex;
     justify-content: center;
