@@ -293,9 +293,22 @@ export class Game {
                     const absAngle = Math.abs(human.aimAngle);
                     const nearHorizontal = absAngle < Math.PI / 6 || absAngle > (Math.PI - Math.PI / 6);
                     if (nearHorizontal) {
-                        const pushDist = human.weapon.meleeRange * 0.4;
-                        human.x += Math.cos(human.aimAngle) * pushDist;
-                        human.y += Math.sin(human.aimAngle) * pushDist;
+                        const maxPush = human.weapon.meleeRange * 0.4;
+                        const dx = Math.cos(human.aimAngle);
+                        const dy = Math.sin(human.aimAngle);
+                        // Ray-march in 2px steps — stop before entering solid terrain
+                        let pushDist = 0;
+                        const step = 2;
+                        while (pushDist + step <= maxPush) {
+                            const nx = human.x + dx * (pushDist + step);
+                            const ny = human.y + dy * (pushDist + step);
+                            if (this.terrain.rectCollides(nx, ny, human.width, human.height)) break;
+                            pushDist += step;
+                        }
+                        if (pushDist > 0) {
+                            human.x += dx * pushDist;
+                            human.y += dy * pushDist;
+                        }
                     }
                 }
             }
