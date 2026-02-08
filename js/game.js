@@ -276,7 +276,7 @@ export class Game {
                 // Released — fire with charge
                 const charge = human.releaseCharge(now);
                 const muzzle = human.getMuzzle();
-                this.weapons.fire(human.weapon, muzzle.x, muzzle.y, human.aimAngle, human.index, charge);
+                this.weapons.fire(human.weapon, muzzle.x, muzzle.y, human.aimAngle, human.index, charge, human.clusterMineMode);
                 human.consumeAmmo();
                 human.lastFireTime = now;
             }
@@ -308,7 +308,11 @@ export class Game {
         }
 
         // Weapon switching (cancel charge/sighting if switching)
-        const switchWeapon = (idx) => { human.charging = false; human.sighting = false; human.setWeapon(idx); };
+        const switchWeapon = (idx) => {
+            // Allow same-index press for cluster toggle, but cancel charge/sight for real switches
+            if (idx !== human.weaponIndex) { human.charging = false; human.sighting = false; }
+            human.setWeapon(idx);
+        };
         if (this.input.wasPressed('1')) switchWeapon(0);
         if (this.input.wasPressed('2')) switchWeapon(1);
         if (this.input.wasPressed('3')) switchWeapon(2);

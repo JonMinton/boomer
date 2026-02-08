@@ -202,6 +202,9 @@ export const WEAPONS = Object.freeze({
         subTerrainDestruct: 0.5,
         ammo:            2,       // starting rounds
         ammoPickup:      1,       // rounds per crate
+        // Mine mode (toggled by pressing cluster key again)
+        mineProximity:   30,      // px — detonation trigger distance
+        mineLifetime:    10000,   // ms before auto-detonation
     },
 });
 

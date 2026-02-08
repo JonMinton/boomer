@@ -54,6 +54,9 @@ export class Player {
         this.ammo = {};
         this._initAmmo();
 
+        // Cluster mine mode toggle
+        this.clusterMineMode = false;
+
         // Aiming
         this.aimAngle = index === 0 ? 0 : Math.PI; // face opponent initially
         this.facingRight = index === 0;
@@ -100,6 +103,7 @@ export class Player {
         this.chargeStart = 0;
         this.sighting = false;
         this.sightStart = 0;
+        this.clusterMineMode = false;
         this.damageFlashEnd = 0;
         this.onGround = false;
         this.spawnX = spawnX;
@@ -119,6 +123,10 @@ export class Player {
         if (idx >= 0 && idx < WEAPON_LIST.length && idx !== this.weaponIndex) {
             this.weaponIndex = idx;
             this.weapon = WEAPON_LIST[idx];
+            playSwitch();
+        } else if (idx === this.weaponIndex && this.weapon.id === 'cluster') {
+            // Toggle mine mode when pressing cluster key again
+            this.clusterMineMode = !this.clusterMineMode;
             playSwitch();
         }
     }

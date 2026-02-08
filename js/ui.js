@@ -192,6 +192,17 @@ function _drawWeaponHUD(ctx, player) {
             ctx.fillText('HOLD', bx + 26, y + 32);
         }
 
+        // Cluster bomb/mine mode indicator
+        if (w.id === 'cluster' && hasAmmo) {
+            const modeLabel = player.clusterMineMode ? 'MINE' : 'BOMB';
+            const modeColour = player.clusterMineMode ? 'rgba(255,100,30,0.7)' : 'rgba(255,200,50,0.4)';
+            ctx.fillStyle = modeColour;
+            ctx.font = 'bold 8px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(modeLabel, bx + slotW - 3, y + 32);
+            ctx.textAlign = 'left';
+        }
+
         // Sighted indicator (sniper — only if ammo available)
         if (w.sighted && hasAmmo) {
             ctx.fillStyle = 'rgba(255,80,60,0.5)';

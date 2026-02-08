@@ -31,6 +31,9 @@ class Projectile {
         this.bounces    = 0;
         this.distTravelled = 0;
         this.isSub      = isSub;  // cluster sub-munitions skip cluster split
+        this.isMine     = false;  // set true for mine-mode sub-munitions
+        this.landed     = false;  // true once a mine has settled on terrain
+        this.mineMode   = false;  // parent cluster carries this from player state
     }
 }
 
@@ -61,8 +64,9 @@ export class WeaponSystem {
      * @param {number} aimAngle - Radians
      * @param {number} ownerIndex
      * @param {number} [chargeFraction=1] - 0-1 charge for chargeable weapons
+     * @param {boolean} [mineMode=false] - Cluster mine mode
      */
-    fire(weapon, x, y, aimAngle, ownerIndex, chargeFraction = 1) {
+    fire(weapon, x, y, aimAngle, ownerIndex, chargeFraction = 1, mineMode = false) {
         playShot(weapon.id);
 
         // Melee weapons resolve instantly in a short arc
@@ -92,7 +96,9 @@ export class WeaponSystem {
             const vx = Math.cos(spreadAngle) * speed;
             const vy = Math.sin(spreadAngle) * speed;
 
-            this.projectiles.push(new Projectile(weapon, x, y, vx, vy, ownerIndex));
+            const proj = new Projectile(weapon, x, y, vx, vy, ownerIndex);
+            proj.mineMode = mineMode;
+            this.projectiles.push(proj);
         }
     }
 
@@ -251,6 +257,35 @@ export class WeaponSystem {
                 continue;
             }
 
+            // ── Landed mine: skip movement, check proximity ──
+            if (p.isMine && p.landed) {
+                p.age += dt;
+
+                // Auto-detonate after lifetime
+                if (p.age >= (p.weapon.mineLifetime || 10000)) {
+                    this._explode(p);
+                    continue;
+                }
+
+                // Proximity check against ALL players (including owner — self-damage)
+                const proxDist = p.weapon.mineProximity || 30;
+                let triggered = false;
+                for (let pi = 0; pi < players.length; pi++) {
+                    const plr = players[pi];
+                    if (!plr || plr.dead) continue;
+                    const d = dist(p.x, p.y, plr.cx, plr.cy);
+                    if (d < proxDist) {
+                        this._explode(p, pi);
+                        triggered = true;
+                        break;
+                    }
+                }
+                if (triggered) continue;
+
+                // Mines stay put — skip rest of update
+                continue;
+            }
+
             // Apply gravity
             p.vy += p.weapon.gravity * GRAVITY * dtFactor * 10;
 
@@ -304,6 +339,15 @@ export class WeaponSystem {
 
             // Terrain collision via ray-stepping
             if (this._checkTerrainCollision(p, oldX, oldY)) {
+                // Mine sub-munitions land on terrain instead of exploding
+                if (p.isMine && p.isSub) {
+                    p.landed = true;
+                    p.vx = 0;
+                    p.vy = 0;
+                    // Nudge up so mine sits on surface
+                    p.y = oldY;
+                    continue;
+                }
                 if (p.weapon.bounces > 0 && p.bounces < p.weapon.bounces) {
                     this._bounce(p, oldX, oldY);
                 } else {
@@ -390,6 +434,7 @@ export class WeaponSystem {
                     p.ownerIndex,
                     true, // isSub
                 );
+                subProj.isMine = p.mineMode;
                 this.projectiles.push(subProj);
             }
             return;
@@ -427,6 +472,30 @@ export class WeaponSystem {
         for (const p of this.projectiles) {
             if (!p.alive) continue;
             const w = p.weapon;
+
+            // Landed mine: draw as a small pulsing circle on terrain
+            if (p.isMine && p.landed) {
+                const pulse = 0.7 + 0.3 * Math.sin(p.age * 0.006);
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                // Outer glow
+                ctx.fillStyle = `rgba(255,100,30,${0.2 * pulse})`;
+                ctx.beginPath();
+                ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                ctx.fill();
+                // Core
+                ctx.fillStyle = `rgba(255,180,50,${0.7 * pulse})`;
+                ctx.beginPath();
+                ctx.arc(0, 0, 4, 0, Math.PI * 2);
+                ctx.fill();
+                // Centre dot
+                ctx.fillStyle = '#f44';
+                ctx.beginPath();
+                ctx.arc(0, 0, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                continue;
+            }
 
             ctx.save();
             ctx.translate(p.x, p.y);
