@@ -165,10 +165,11 @@ function _drawWeaponHUD(ctx, player) {
         ctx.font = 'bold 10px monospace';
         ctx.fillText(`[${i + 1}]`, bx + 3, y + 13);
 
-        // Weapon name
+        // Weapon name (cluster shows mode-dependent name)
         ctx.font = '10px monospace';
         ctx.fillStyle = isEmpty ? '#555' : (isActive ? '#fff' : '#999');
-        ctx.fillText(w.name, bx + 26, y + 13);
+        const displayName = (w.id === 'cluster' && player.clusterMineMode) ? 'Cluster Mine' : w.name;
+        ctx.fillText(displayName, bx + 26, y + 13);
 
         // Ammo count (right side)
         ctx.textAlign = 'right';
