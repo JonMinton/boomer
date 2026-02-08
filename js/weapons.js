@@ -71,8 +71,7 @@ export class WeaponSystem {
 
         // Melee weapons resolve instantly in a short arc
         if (weapon.melee) {
-            this._fireMelee(weapon, x, y, aimAngle, ownerIndex);
-            return;
+            return this._fireMelee(weapon, x, y, aimAngle, ownerIndex);
         }
 
         // Hitscan weapons resolve instantly via raycast
@@ -110,9 +109,10 @@ export class WeaponSystem {
         const hitX = x + Math.cos(aimAngle) * (range * 0.42);
         const hitY = y + Math.sin(aimAngle) * (range * 0.42);
 
-        // Destroy terrain at the dig point
+        // Destroy terrain at the dig point (cumulative for multi-hit digging)
         const destructRadius = weapon.blastRadius * weapon.terrainDestruct;
-        this.terrain.destroyCircle(hitX, hitY, destructRadius, 2);
+        const power = weapon.digPower || 2;
+        const destroyed = this.terrain.destroyCircle(hitX, hitY, destructRadius, power, true);
 
         // Emit dirt/debris particles
         this.particles.emitExplosion(hitX, hitY, weapon.blastRadius * 0.5, weapon.trailColour);
@@ -146,6 +146,8 @@ export class WeaponSystem {
                 directHitPlayerIdx: i,
             });
         }
+
+        return destroyed;
     }
 
     /**

@@ -284,17 +284,19 @@ export class Game {
             // Melee weapon: fire on click, push player into cleared space if digging horizontally
             if (this.input.mouseDown && human.canFire(now)) {
                 const muzzle = human.getMuzzle();
-                this.weapons.fire(human.weapon, muzzle.x, muzzle.y, human.aimAngle, human.index);
+                const destroyed = this.weapons.fire(human.weapon, muzzle.x, muzzle.y, human.aimAngle, human.index);
                 human.consumeAmmo();
                 human.lastFireTime = now;
 
-                // Push player forward if digging within ±30° of horizontal
-                const absAngle = Math.abs(human.aimAngle);
-                const nearHorizontal = absAngle < Math.PI / 6 || absAngle > (Math.PI - Math.PI / 6);
-                if (nearHorizontal) {
-                    const pushDist = human.weapon.meleeRange * 0.4;
-                    human.x += Math.cos(human.aimAngle) * pushDist;
-                    human.y += Math.sin(human.aimAngle) * pushDist;
+                // Push player forward only if terrain was actually cleared
+                if (destroyed > 0) {
+                    const absAngle = Math.abs(human.aimAngle);
+                    const nearHorizontal = absAngle < Math.PI / 6 || absAngle > (Math.PI - Math.PI / 6);
+                    if (nearHorizontal) {
+                        const pushDist = human.weapon.meleeRange * 0.4;
+                        human.x += Math.cos(human.aimAngle) * pushDist;
+                        human.y += Math.sin(human.aimAngle) * pushDist;
+                    }
                 }
             }
         } else {
@@ -328,6 +330,9 @@ export class Game {
         for (const p of this.players) {
             p.updatePhysics(dt, this.terrain);
         }
+
+        // Decay accumulated dig damage over time
+        this.terrain.decayDigDamage(dt);
 
         // ── Weapons / Projectiles ───────────────────────────────────
         this.weapons.update(dt, this.players);

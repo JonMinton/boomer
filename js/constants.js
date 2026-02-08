@@ -83,6 +83,7 @@ export const WEAPONS = Object.freeze({
         melee:           true,        // instant melee — no projectile
         meleeRange:      40,          // pixels from player centre
         meleeArc:        0.8,         // radians (≈45° half-angle)
+        digPower:        1.0,         // lower than explosion power — hard materials need multiple digs
     },
     ROCKET_LAUNCHER: {
         id:              'rocket',
@@ -258,6 +259,9 @@ export const AI_DIFFICULTY = Object.freeze({
         weaponSwitch:  0.3,
     },
 });
+
+// ── Dig damage decay ───────────────────────────────────────────────
+export const DIG_DAMAGE_DECAY = 0.3;  // damage units per second — dig damage fades over ~3s
 
 // ── Particle presets ────────────────────────────────────────────────
 export const PARTICLE_LIFETIME = 800;  // ms base

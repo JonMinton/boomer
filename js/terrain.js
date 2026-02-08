@@ -7,6 +7,7 @@
 import {
     WORLD_WIDTH, WORLD_HEIGHT,
     MAT, MAT_RESISTANCE, MAT_COLOURS,
+    DIG_DAMAGE_DECAY,
 } from './constants.js';
 
 export class Terrain {
@@ -27,12 +28,16 @@ export class Terrain {
         this.imageData = this.ctx.createImageData(this.width, this.height);
         this.pixels    = this.imageData.data; // Uint8ClampedArray (RGBA)
 
+        /** Cumulative dig damage per pixel (for multi-hit digging). */
+        this.digDamage = new Float32Array(this.width * this.height);
+
         this.dirty = true; // needs re-render
     }
 
     /** Clear all terrain to air. */
     clear() {
         this.data.fill(MAT.AIR);
+        this.digDamage.fill(0);
         this.dirty = true;
     }
 
@@ -70,9 +75,10 @@ export class Terrain {
      * @param {number} cy - Centre y
      * @param {number} radius - Blast radius in pixels
      * @param {number} power - Destruction power (compared against material resistance)
+     * @param {boolean} [cumulative=false] - If true, accumulate damage across calls (for digging)
      * @returns {number} Number of pixels destroyed
      */
-    destroyCircle(cx, cy, radius, power) {
+    destroyCircle(cx, cy, radius, power, cumulative = false) {
         cx = Math.round(cx);
         cy = Math.round(cy);
         const r  = Math.ceil(radius);
@@ -96,7 +102,15 @@ export class Terrain {
                 const distFrac = Math.sqrt(dx * dx + dy * dy) / radius;
                 const effectivePower = power * (1 - distFrac * 0.6);
 
-                if (effectivePower >= resistance) {
+                if (cumulative) {
+                    // Accumulate dig damage across multiple hits
+                    this.digDamage[idx] += effectivePower;
+                    if (this.digDamage[idx] >= resistance) {
+                        this.data[idx] = MAT.AIR;
+                        this.digDamage[idx] = 0;
+                        destroyed++;
+                    }
+                } else if (effectivePower >= resistance) {
                     this.data[idx] = MAT.AIR;
                     destroyed++;
                 }
@@ -105,6 +119,21 @@ export class Terrain {
 
         if (destroyed > 0) this.dirty = true;
         return destroyed;
+    }
+
+    /**
+     * Decay accumulated dig damage over time so abandoned dig sites reset.
+     * @param {number} dt - Delta time in ms
+     */
+    decayDigDamage(dt) {
+        const decay = DIG_DAMAGE_DECAY * dt / 1000;
+        const dd = this.digDamage;
+        for (let i = 0, len = dd.length; i < len; i++) {
+            if (dd[i] > 0) {
+                dd[i] -= decay;
+                if (dd[i] < 0) dd[i] = 0;
+            }
+        }
     }
 
     /**
