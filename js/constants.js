@@ -62,6 +62,28 @@ export const MAT_COLOURS = Object.freeze({
 
 // ── Weapon definitions ──────────────────────────────────────────────
 export const WEAPONS = Object.freeze({
+    DIGGER: {
+        id:              'digger',
+        name:            'Dig',
+        damage:          20,
+        blastRadius:     16,
+        terrainDestruct: 1.0,
+        speed:           0,
+        gravity:         0,
+        cooldown:        400,
+        knockback:       3,
+        pellets:         1,
+        spread:          0,
+        bounces:         0,
+        fuseTime:        0,
+        trailColour:     [180, 140, 100],
+        projRadius:      0,
+        colour:          '#a86',
+        ammo:            null,        // unlimited
+        melee:           true,        // instant melee — no projectile
+        meleeRange:      40,          // pixels from player centre
+        meleeArc:        0.8,         // radians (≈45° half-angle)
+    },
     ROCKET_LAUNCHER: {
         id:              'rocket',
         name:            'Rocket Launcher',
@@ -184,6 +206,7 @@ export const WEAPONS = Object.freeze({
 });
 
 export const WEAPON_LIST = [
+    WEAPONS.DIGGER,
     WEAPONS.ROCKET_LAUNCHER,
     WEAPONS.SHOTGUN,
     WEAPONS.GRENADE_LAUNCHER,

@@ -65,6 +65,12 @@ export class WeaponSystem {
     fire(weapon, x, y, aimAngle, ownerIndex, chargeFraction = 1) {
         playShot(weapon.id);
 
+        // Melee weapons resolve instantly in a short arc
+        if (weapon.melee) {
+            this._fireMelee(weapon, x, y, aimAngle, ownerIndex);
+            return;
+        }
+
         // Hitscan weapons resolve instantly via raycast
         if (weapon.hitscan) {
             this._fireHitscan(weapon, x, y, aimAngle, ownerIndex);
@@ -87,6 +93,52 @@ export class WeaponSystem {
             const vy = Math.sin(spreadAngle) * speed;
 
             this.projectiles.push(new Projectile(weapon, x, y, vx, vy, ownerIndex));
+        }
+    }
+
+    /**
+     * Fire a melee weapon: destroy terrain in a short arc and damage nearby players.
+     */
+    _fireMelee(weapon, x, y, aimAngle, ownerIndex) {
+        const range = weapon.meleeRange || 40;
+        const hitX = x + Math.cos(aimAngle) * (range * 0.7);
+        const hitY = y + Math.sin(aimAngle) * (range * 0.7);
+
+        // Destroy terrain at the dig point
+        const destructRadius = weapon.blastRadius * weapon.terrainDestruct;
+        this.terrain.destroyCircle(hitX, hitY, destructRadius, 2);
+
+        // Emit dirt/debris particles
+        this.particles.emitExplosion(hitX, hitY, weapon.blastRadius * 0.5, weapon.trailColour);
+
+        // Check for player hits within melee range and arc
+        for (let i = 0; i < this.players.length; i++) {
+            if (i === ownerIndex) continue;
+            const p = this.players[i];
+            if (!p.alive) continue;
+
+            const px = p.x + p.width / 2;
+            const py = p.y + p.height / 2;
+            const d = dist(x, y, px, py);
+            if (d > range) continue;
+
+            // Check within melee arc
+            const angleToPlayer = angle(x, y, px, py);
+            let angleDiff = angleToPlayer - aimAngle;
+            while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+            while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+            if (Math.abs(angleDiff) > (weapon.meleeArc || 0.8)) continue;
+
+            // Queue damage via pendingExplosions
+            this.pendingExplosions.push({
+                x: px, y: py,
+                weapon,
+                ownerIndex,
+                blastRadius: range,
+                damage: weapon.damage,
+                knockback: weapon.knockback,
+                directHitPlayerIdx: i,
+            });
         }
     }
 

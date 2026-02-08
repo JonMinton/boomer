@@ -494,46 +494,50 @@ export class AIController {
             }
         }
         // Last resort: rocket (unlimited) or shotgun (unlimited)
-        this.self.setWeapon(this._hasAmmo(0) ? 0 : 1);
+        this.self.setWeapon(this._hasAmmo(1) ? 1 : 2);
     }
 
     _chooseWeapon() {
         const d = this._distToTarget();
-        // Weapon indices: 0=Rocket, 1=Shotgun, 2=Grenade, 3=Sniper, 4=Cluster
+        // Weapon indices: 0=Dig, 1=Rocket, 2=Shotgun, 3=Grenade, 4=Sniper, 5=Cluster
 
-        if (d < 120) {
+        if (d < 50) {
+            // Melee range → dig
+            this._trySetWeapon(0, 2, 1);
+        } else if (d < 120) {
             // Close range → shotgun
-            this._trySetWeapon(1, 0);
+            this._trySetWeapon(2, 1);
         } else if (d > 500 && this.hasLineOfSight) {
             // Very long range with LOS → sniper
-            this._trySetWeapon(3, 0, 2);
+            this._trySetWeapon(4, 1, 3);
         } else if (d > 350) {
             // Long range
             if (!this.hasLineOfSight) {
                 // No LOS → grenade or cluster to arc over cover
-                const pick = Math.random() < 0.5 ? 2 : 4;
-                this._trySetWeapon(pick, pick === 2 ? 4 : 2, 0);
+                const pick = Math.random() < 0.5 ? 3 : 5;
+                this._trySetWeapon(pick, pick === 3 ? 5 : 3, 1);
             } else {
                 // LOS → rocket or sniper
-                const pick = Math.random() < 0.6 ? 0 : 3;
-                this._trySetWeapon(pick, pick === 0 ? 3 : 0);
+                const pick = Math.random() < 0.6 ? 1 : 4;
+                this._trySetWeapon(pick, pick === 1 ? 4 : 1);
             }
         } else if (d > 200) {
             // Mid range → varied: rocket, cluster, or grenade
             const roll = Math.random();
-            if (roll < 0.4) this._trySetWeapon(0, 2, 4);
-            else if (roll < 0.65) this._trySetWeapon(4, 2, 0);
-            else if (roll < 0.85) this._trySetWeapon(2, 4, 0);
-            else this._trySetWeapon(3, 0, 2);
+            if (roll < 0.4) this._trySetWeapon(1, 3, 5);
+            else if (roll < 0.65) this._trySetWeapon(5, 3, 1);
+            else if (roll < 0.85) this._trySetWeapon(3, 5, 1);
+            else this._trySetWeapon(4, 1, 3);
         } else {
             // Short-mid range → shotgun or rocket
-            const pick = Math.random() < 0.6 ? 1 : 0;
-            this._trySetWeapon(pick, pick === 1 ? 0 : 1);
+            const pick = Math.random() < 0.6 ? 2 : 1;
+            this._trySetWeapon(pick, pick === 2 ? 1 : 2);
         }
 
         // Update preferred range based on chosen weapon
         const wid = this.self.weapon.id;
-        if (wid === 'shotgun')      this.preferredRange = 110;
+        if (wid === 'digger')       this.preferredRange = 40;
+        else if (wid === 'shotgun') this.preferredRange = 110;
         else if (wid === 'sniper')  this.preferredRange = 400;
         else if (wid === 'cluster') this.preferredRange = 280;
         else if (wid === 'grenade') this.preferredRange = 280;

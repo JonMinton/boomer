@@ -64,7 +64,29 @@ export function playShot(type) {
     const c = getCtx();
     const now = c.currentTime;
 
-    if (type === 'shotgun') {
+    if (type === 'digger') {
+        // Short gritty scrape
+        const dur = 0.1;
+        const buf = c.createBuffer(1, c.sampleRate * dur, c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) {
+            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+        }
+        const src = c.createBufferSource();
+        src.buffer = buf;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.12, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        const f = c.createBiquadFilter();
+        f.type = 'bandpass';
+        f.frequency.value = 500;
+        f.Q.value = 2;
+        src.connect(f);
+        f.connect(g);
+        g.connect(c.destination);
+        src.start(now);
+        src.stop(now + dur);
+    } else if (type === 'shotgun') {
         // Short sharp crack
         const dur = 0.08;
         const buf = c.createBuffer(1, c.sampleRate * dur, c.sampleRate);

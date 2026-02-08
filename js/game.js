@@ -280,6 +280,23 @@ export class Game {
                 human.consumeAmmo();
                 human.lastFireTime = now;
             }
+        } else if (human.weapon.melee) {
+            // Melee weapon: fire on click, push player into cleared space if digging horizontally
+            if (this.input.mouseDown && human.canFire(now)) {
+                const muzzle = human.getMuzzle();
+                this.weapons.fire(human.weapon, muzzle.x, muzzle.y, human.aimAngle, human.index);
+                human.consumeAmmo();
+                human.lastFireTime = now;
+
+                // Push player forward if digging within ±30° of horizontal
+                const absAngle = Math.abs(human.aimAngle);
+                const nearHorizontal = absAngle < Math.PI / 6 || absAngle > (Math.PI - Math.PI / 6);
+                if (nearHorizontal) {
+                    const pushDist = human.weapon.meleeRange * 0.4;
+                    human.x += Math.cos(human.aimAngle) * pushDist;
+                    human.y += Math.sin(human.aimAngle) * pushDist;
+                }
+            }
         } else {
             // Non-chargeable: fire on click
             if (this.input.mouseDown && human.canFire(now)) {
@@ -297,6 +314,8 @@ export class Game {
         if (this.input.wasPressed('3')) switchWeapon(2);
         if (this.input.wasPressed('4')) switchWeapon(3);
         if (this.input.wasPressed('5')) switchWeapon(4);
+        if (this.input.wasPressed('6')) switchWeapon(5);
+        if (this.input.wasPressed('e')) switchWeapon(0);  // E = quick-switch to Dig
         if (this.input.wasPressed('q')) { human.charging = false; human.sighting = false; human.nextWeapon(); }
 
         // ── AI update ───────────────────────────────────────────────
