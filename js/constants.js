@@ -104,8 +104,8 @@ export const WEAPONS = Object.freeze({
     GRENADE_LAUNCHER: {
         id:              'grenade',
         name:            'Grenade',
-        damage:          28,
-        blastRadius:     34,
+        damage:          56,
+        blastRadius:     48,
         terrainDestruct: 0.85,
         speed:           12,
         gravity:         0.07,    // light arc — 75% charge at 45° ≈ full screen
