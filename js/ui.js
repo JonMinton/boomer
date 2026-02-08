@@ -163,7 +163,8 @@ function _drawWeaponHUD(ctx, player) {
         // Key binding
         ctx.fillStyle = isEmpty ? '#555' : (isActive ? '#fff' : '#999');
         ctx.font = 'bold 10px monospace';
-        ctx.fillText(`[${i + 1}]`, bx + 3, y + 13);
+        const keyLabel = i === 0 ? 'E' : `${i}`;
+        ctx.fillText(`[${keyLabel}]`, bx + 3, y + 13);
 
         // Weapon name (cluster shows mode-dependent name)
         ctx.font = '10px monospace';

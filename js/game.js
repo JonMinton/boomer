@@ -313,13 +313,12 @@ export class Game {
             if (idx !== human.weaponIndex) { human.charging = false; human.sighting = false; }
             human.setWeapon(idx);
         };
-        if (this.input.wasPressed('1')) switchWeapon(0);
-        if (this.input.wasPressed('2')) switchWeapon(1);
-        if (this.input.wasPressed('3')) switchWeapon(2);
-        if (this.input.wasPressed('4')) switchWeapon(3);
-        if (this.input.wasPressed('5')) switchWeapon(4);
-        if (this.input.wasPressed('6')) switchWeapon(5);
-        if (this.input.wasPressed('e')) switchWeapon(0);  // E = quick-switch to Dig
+        if (this.input.wasPressed('1')) switchWeapon(1);  // Rocket
+        if (this.input.wasPressed('2')) switchWeapon(2);  // Shotgun
+        if (this.input.wasPressed('3')) switchWeapon(3);  // Grenade
+        if (this.input.wasPressed('4')) switchWeapon(4);  // Sniper
+        if (this.input.wasPressed('5')) switchWeapon(5);  // Cluster
+        if (this.input.wasPressed('e')) switchWeapon(0);  // Dig
         if (this.input.wasPressed('q')) { human.charging = false; human.sighting = false; human.nextWeapon(); }
 
         // ── AI update ───────────────────────────────────────────────
