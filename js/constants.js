@@ -83,7 +83,7 @@ export const WEAPONS = Object.freeze({
         melee:           true,        // instant melee — no projectile
         meleeRange:      40,          // pixels from player centre
         meleeArc:        0.8,         // radians (≈45° half-angle)
-        digPower:        1.0,         // lower than explosion power — hard materials need multiple digs
+        digPower:        1.8,         // clears soft materials (dirt, sand, grass) in one hit; brick/rock need multiple
     },
     ROCKET_LAUNCHER: {
         id:              'rocket',

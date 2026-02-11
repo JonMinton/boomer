@@ -135,9 +135,10 @@ export class WeaponSystem {
             while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
             if (Math.abs(angleDiff) > (weapon.meleeArc || 0.8)) continue;
 
-            // Queue damage via pendingExplosions
+            // Queue damage — use attacker position as origin so knockback
+            // pushes the victim away from the digger, not from their own centre
             this.pendingExplosions.push({
-                x: px, y: py,
+                x, y,
                 weapon,
                 ownerIndex,
                 blastRadius: range,
