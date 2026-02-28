@@ -78,7 +78,7 @@ export function updateScreenShake(dt) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {import('./player.js').Player[]} players
  */
-export function drawHUD(ctx, players) {
+export function drawHUD(ctx, players, roundTimer = 0) {
     updateDamageNumbers(16);
     drawDamageNumbers(ctx);
 
@@ -92,6 +92,9 @@ export function drawHUD(ctx, players) {
 
     // Score
     _drawScore(ctx, players);
+
+    // Round timer
+    _drawRoundTimer(ctx, roundTimer);
 
     // Exit hint
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
@@ -285,6 +288,29 @@ function _drawScore(ctx, players) {
     ctx.fillStyle = '#ccc';
     ctx.font = '12px monospace';
     ctx.fillText(`First to ${ROUNDS_TO_WIN}`, CANVAS_WIDTH / 2, 28);
+}
+
+function _drawRoundTimer(ctx, roundTimer) {
+    const totalSec = Math.max(0, Math.ceil(roundTimer / 1000));
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    const display = `${min}:${sec.toString().padStart(2, '0')}`;
+
+    ctx.font = 'bold 20px monospace';
+    ctx.textAlign = 'center';
+
+    if (totalSec <= 5) {
+        // Red + pulsing
+        const pulse = 0.6 + 0.4 * Math.abs(Math.sin(performance.now() * 0.006));
+        ctx.fillStyle = `rgba(255,50,30,${pulse})`;
+    } else if (totalSec <= 15) {
+        // Orange warning
+        ctx.fillStyle = '#ffa030';
+    } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    }
+
+    ctx.fillText(display, CANVAS_WIDTH / 2, 48);
 }
 
 // ── Menu Screens ────────────────────────────────────────────────────
@@ -524,6 +550,36 @@ export function drawRoundOver(ctx, winner, loser) {
     ctx.fillStyle = '#aaa';
     ctx.font = '18px monospace';
     ctx.fillText('Next round starting...', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+}
+
+/**
+ * Draw TIME'S UP overlay for sudden death.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import('./player.js').Player|null} winner - null if draw
+ * @param {boolean} isDraw - true if equal health (no winner)
+ */
+export function drawTimesUp(ctx, winner, isDraw) {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    ctx.font = 'bold 48px monospace';
+    ctx.textAlign = 'center';
+
+    if (isDraw) {
+        ctx.fillStyle = '#ffa030';
+        ctx.fillText("TIME'S UP \u2014 DRAW!", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+
+        ctx.fillStyle = '#aaa';
+        ctx.font = '18px monospace';
+        ctx.fillText('Equal health \u2014 no winner this round', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+    } else {
+        ctx.fillStyle = winner.colour;
+        ctx.fillText(`TIME'S UP \u2014 ${winner.name} WINS!`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+
+        ctx.fillStyle = '#aaa';
+        ctx.font = '18px monospace';
+        ctx.fillText('Next round starting...', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+    }
 }
 
 /**

@@ -6,6 +6,7 @@
 import {
     CANVAS_WIDTH, CANVAS_HEIGHT,
     MAX_HEALTH, WEAPON_LIST, ROUNDS_TO_WIN, ROUND_START_DELAY,
+    ROUND_TIME_LIMIT, SUDDEN_DEATH_DRAW_DELAY,
     AI_DIFFICULTY,
     BUG_REPORT_URL, FEATURE_REQUEST_URL, FEEDBACK_FORM_URL,
 } from './constants.js';
@@ -19,7 +20,7 @@ import { AIController } from './ai.js';
 import { MAP_DEFS, generateMap, findSpawnY } from './maps.js';
 import {
     drawHUD, drawMainMenu, drawRoundOver, drawMatchOver,
-    drawCountdown, spawnDamageNumber, clearDamageNumbers,
+    drawCountdown, drawTimesUp, spawnDamageNumber, clearDamageNumbers,
     triggerScreenShake, getScreenShake, updateScreenShake,
 } from './ui.js';
 import { resumeAudio, playExplosion, playHit, playVictory, playPickup } from './audio.js';
@@ -82,6 +83,11 @@ export class Game {
 
         // Round over timer
         this.roundOverTimer = 0;
+
+        // Round timer (sudden death)
+        this.roundTimer = 0;
+        this.timesUp = false;
+        this.timesUpDraw = false;
 
         // Training mode heal tracking
         this._trainingHealTimer = 0;
@@ -411,23 +417,59 @@ export class Game {
             this._trainingLastHP = bot.health;
         }
 
-        // ── Check round end ─────────────────────────────────────────
-        for (const p of this.players) {
-            if (p.dead) {
-                const winner = this.players.find(pl => !pl.dead);
-                if (winner) {
-                    winner.wins++;
-                    this.roundWinner = winner;
+        // ── Round timer / sudden death ────────────────────────────────
+        this.roundTimer -= dt;
+        if (this.roundTimer <= 0 && !this.players.some(p => p.dead)) {
+            this.roundTimer = 0;
+            this.timesUp = true;
+            const p0 = this.players[0];
+            const p1 = this.players[1];
 
-                    if (winner.wins >= ROUNDS_TO_WIN) {
-                        this.state = STATE.MATCH_OVER;
-                        playVictory();
-                    } else {
-                        this.state = STATE.ROUND_OVER;
-                        this.roundOverTimer = ROUND_START_DELAY;
-                    }
+            if (p0.health === p1.health) {
+                // Draw — neither scores
+                this.timesUpDraw = true;
+                this.roundWinner = null;
+                this.state = STATE.ROUND_OVER;
+                this.roundOverTimer = SUDDEN_DEATH_DRAW_DELAY;
+            } else {
+                // Player with lower health forfeits
+                const loser = p0.health < p1.health ? p0 : p1;
+                const winner = p0.health < p1.health ? p1 : p0;
+                loser.health = 0;
+                loser.dead = true;
+                winner.wins++;
+                this.roundWinner = winner;
+                this.timesUpDraw = false;
+
+                if (winner.wins >= ROUNDS_TO_WIN) {
+                    this.state = STATE.MATCH_OVER;
+                    playVictory();
+                } else {
+                    this.state = STATE.ROUND_OVER;
+                    this.roundOverTimer = ROUND_START_DELAY;
                 }
-                break;
+            }
+        }
+
+        // ── Check round end (skip if sudden death already handled it) ─
+        if (this.state === STATE.PLAYING) {
+            for (const p of this.players) {
+                if (p.dead) {
+                    const winner = this.players.find(pl => !pl.dead);
+                    if (winner) {
+                        winner.wins++;
+                        this.roundWinner = winner;
+
+                        if (winner.wins >= ROUNDS_TO_WIN) {
+                            this.state = STATE.MATCH_OVER;
+                            playVictory();
+                        } else {
+                            this.state = STATE.ROUND_OVER;
+                            this.roundOverTimer = ROUND_START_DELAY;
+                        }
+                    }
+                    break;
+                }
             }
         }
 
@@ -546,7 +588,7 @@ export class Game {
         this.particles.draw(ctx);
 
         // HUD
-        drawHUD(ctx, this.players);
+        drawHUD(ctx, this.players, this.roundTimer);
 
         ctx.restore();
 
@@ -554,8 +596,12 @@ export class Game {
         if (this.state === STATE.COUNTDOWN) {
             drawCountdown(ctx, this.countdownText);
         } else if (this.state === STATE.ROUND_OVER) {
-            const loser = this.players.find(p => p.dead);
-            drawRoundOver(ctx, this.roundWinner, loser);
+            if (this.timesUp) {
+                drawTimesUp(ctx, this.roundWinner, this.timesUpDraw);
+            } else {
+                const loser = this.players.find(p => p.dead);
+                drawRoundOver(ctx, this.roundWinner, loser);
+            }
         } else if (this.state === STATE.MATCH_OVER) {
             drawMatchOver(ctx, this.roundWinner);
         }
@@ -719,6 +765,11 @@ export class Game {
 
         // Spawn initial ammo crates
         this.pickups.spawnInitial(this.players);
+
+        // Round timer
+        this.roundTimer = ROUND_TIME_LIMIT;
+        this.timesUp = false;
+        this.timesUpDraw = false;
 
         // Countdown
         this.state = STATE.COUNTDOWN;

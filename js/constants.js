@@ -284,6 +284,8 @@ export const CRATE = Object.freeze({
 // ── Round / scoring ─────────────────────────────────────────────────
 export const ROUNDS_TO_WIN = 3;
 export const ROUND_START_DELAY = 2000; // ms
+export const ROUND_TIME_LIMIT = 60000; // ms (60 seconds per round)
+export const SUDDEN_DEATH_DRAW_DELAY = 2000; // ms before next round after a draw
 
 // ── Feedback ───────────────────────────────────────────────────────
 export const GITHUB_REPO_URL = 'https://github.com/JonMinton/boomer';
