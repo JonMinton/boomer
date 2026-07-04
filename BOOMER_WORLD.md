@@ -1,5 +1,13 @@
 # Boomer World — Design Document
 
+> **Status (July 2026): implemented.** This design has been realised as a
+> sibling repo, `../boomerworld` — vanilla JS + WebGL2, no dependencies.
+> Milestones M1–M3 are complete plus most of M4 (4 ring maps, minimap,
+> ring-size menu options, colour temperature shift, map ambient lighting,
+> and the dynamic-Sun stretch goal as a menu toggle). Implementation notes
+> and deviations are recorded in `../boomerworld/CLAUDE.md`. This document
+> remains the design reference; the feedback log below is live.
+
 ## Concept
 
 A polar-coordinate evolution of Boomer 2D. The play arena is the inner surface of a circular world. Players walk along the circumference, gravity pulls towards the centre, and projectiles follow curved trajectories under radial gravity. The viewport shows only a segment of the ring (perhaps 60–90°), tracking the human player so their local "down" always feels like down.
@@ -189,4 +197,8 @@ _Space for noting observations from Boomer V1 playtesting that affect World desi
 
 | Date | Observation | Implication for World |
 |------|-------------|----------------------|
-| | | |
+| 2026-07-04 | First playable build of World itself. Physics integrated in Cartesian space with radial gravity rather than in (θ, r) — exactly equivalent, avoids ω–r coupling bugs. Terrain storage/rendering polar as designed. | Design doc's "polar physics" section satisfied by an equivalent formulation; keep terrain polar, entities Cartesian. |
+| 2026-07-04 | Option A (shader) chosen but with raw WebGL2 instead of PixiJS — a ~200-line renderer was enough, keeping the no-dependency convention. Terrain texture re-upload of dirty column strips is cheap. | No dependency needed; drop PixiJS from the plan. |
+| 2026-07-04 | Boomer's air-friction/acceleration constants let repeated bunny-hopping build large tangential speed. On one 1200px screen this was invisible; on a ring, the AI crosses half a Medium ring (~3.6k px) in under 10 s. | Traversal is fast and fights start quickly — arguably good on a big ring. If it feels degenerate in play, cap airborne tangential speed rather than touching friction. |
+| 2026-07-04 | Night side at ambient 0.14–0.24 is *very* dark on maps without local lights (Grasslands/Desert). Volcanic reads beautifully thanks to lava-pool lights. | Playtest whether Grasslands night needs fireflies/bioluminescence (already suggested in this doc) or a slightly higher ambient. |
+| 2026-07-04 | Medium ring (R=1150) at a 1200px viewport shows ~50–60° of arc — curvature clearly visible, world feels round without extreme distortion. | Good default; Small (R=750) gives the dramatic look, Large (R=1750) approaches flat-Boomer feel. |
