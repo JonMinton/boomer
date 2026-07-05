@@ -44,6 +44,25 @@ Implementation would need:
 - Type selection on the main menu (for the human player) and per-difficulty AI type weighting
 - Visual differentiation (colour palette, size, or shape per type)
 
+### Multiplayer (requested by several players — applies to boomer and boomerworld)
+Tiered by effort; the cheap tier may satisfy most of the demand.
+
+**No-regret prerequisites** (valuable regardless — also enable replays and better testing):
+- Fixed-timestep simulation loop (accumulator), decoupled from rendering — current `dt/16` variable-step physics diverges across machines
+- Seeded PRNG for gameplay randomness (shotgun spread, cluster scatter, AI rolls)
+- Controller abstraction per player (keyboard/mouse, gamepad, AI, network) — remove the hardcoded `players[0]`=human / `players[1]`=bot assumptions in game.js
+
+**Tier 1 — local couch 2-player (small):**
+- Player 2 input: gamepad via the Gamepad API (twin-stick aim) — one mouse per machine is the binding constraint since the weapon feel is cursor-centric
+- Flat boomer: single fixed screen already, so no camera work
+- Boomerworld: needs split-screen (two camera transforms, terrain shader rendered twice with scissored viewports, per-pane HUD)
+
+**Tier 2 — online (the big leap):**
+- Smallest credible version: WebRTC data channel, host-authoritative (inputs up, snapshots down), terrain replicated as destruction events (the grid itself is 1–2MB); needs a small signalling service (GitHub Pages is static-only) plus lobby/rejoin handling
+- Full version additionally needs the Quake-style stack: client prediction, remote interpolation, lag-compensated sniper rewind — real-time twitch gameplay means 100ms RTT ≈ 50px of projectile error
+- Lockstep determinism is undermined by JS `sin/cos/atan2` varying across browsers (especially boomerworld's polar physics core) — same-browser matches or checksum+resync
+- Cumulative dig damage decay is wall-clock-based; must become fixed-step for consistency
+
 ### Training room easter egg
 If the player destroys enough terrain in the training room to reach the far-left edge of the map and then walks slightly off-screen (past x=0), they find a hidden secret — a weapon or upgrade that persists into the next real game. This rewards thorough exploration of the training room and creates an incentive to experiment with terrain destruction. Implementation considerations:
 - Detect when the human player's x < some threshold (e.g. -20) while in training mode
