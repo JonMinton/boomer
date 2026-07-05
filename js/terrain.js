@@ -98,9 +98,10 @@ export class Terrain {
                 if (mat === MAT.LAVA) continue; // lava is indestructible
 
                 const resistance = MAT_RESISTANCE[mat] || 1;
-                // Power falls off towards edge of blast
+                // Explosions weaken towards the blast edge; digs apply uniform
+                // power so a cleared bore is consistent (no impassable lips)
                 const distFrac = Math.sqrt(dx * dx + dy * dy) / radius;
-                const effectivePower = power * (1 - distFrac * 0.6);
+                const effectivePower = cumulative ? power : power * (1 - distFrac * 0.6);
 
                 if (cumulative) {
                     // Accumulate dig damage across multiple hits

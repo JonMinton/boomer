@@ -299,16 +299,32 @@ export class Game {
                     const absAngle = Math.abs(human.aimAngle);
                     const nearHorizontal = absAngle < Math.PI / 6 || absAngle > (Math.PI - Math.PI / 6);
                     if (nearHorizontal) {
-                        const maxPush = human.weapon.meleeRange * 0.4;
+                        // Push per dig is capped so consecutive dig discs
+                        // (R = 18 bore radius, h = 15 corridor half-height)
+                        // so every corridor cell lies inside TWO consecutive
+                        // dig discs — multi-hit materials (rock, brick) are
+                        // then fully cleared at head/foot height and never
+                        // leave single-hit rim crumbs that jam the tunnel.
+                        const maxPush = human.weapon.meleeRange * 0.25;
                         const dx = Math.cos(human.aimAngle);
                         const dy = Math.sin(human.aimAngle);
-                        // Ray-march in 2px steps — stop before entering solid terrain
+                        // Ray-march in 1px steps — stop before entering solid
+                        // terrain. Only the LEADING half of the body is
+                        // checked (inset 2px vertically, like the walking
+                        // collision checks): the circular bore tapers at the
+                        // tunnel mouth, so a rim lip grazing the trailing
+                        // half must not veto progress into cleared space.
+                        // Re-checking every 1px step means nothing can reach
+                        // the trailing half without first crossing the
+                        // leading-half check, so this cannot phase through
+                        // intact material.
                         let pushDist = 0;
-                        const step = 2;
+                        const step = 1;
                         while (pushDist + step <= maxPush) {
                             const nx = human.x + dx * (pushDist + step);
                             const ny = human.y + dy * (pushDist + step);
-                            if (this.terrain.rectCollides(nx, ny, human.width, human.height)) break;
+                            const frontX = dx >= 0 ? nx + human.width / 2 : nx;
+                            if (this.terrain.rectCollides(frontX, ny + 3, human.width / 2, human.height - 6)) break;
                             pushDist += step;
                         }
                         if (pushDist > 0) {

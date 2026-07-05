@@ -106,8 +106,10 @@ export class WeaponSystem {
      */
     _fireMelee(weapon, x, y, aimAngle, ownerIndex) {
         const range = weapon.meleeRange || 40;
-        const hitX = x + Math.cos(aimAngle) * (range * 0.42);
-        const hitY = y + Math.sin(aimAngle) * (range * 0.42);
+        // Dig disc sits just beyond the muzzle so the bore starts behind the
+        // player's leading edge — the space about to be occupied is cleared
+        const hitX = x + Math.cos(aimAngle) * (range * 0.1);
+        const hitY = y + Math.sin(aimAngle) * (range * 0.1);
 
         // Destroy terrain at the dig point (cumulative for multi-hit digging)
         const destructRadius = weapon.blastRadius * weapon.terrainDestruct;

@@ -108,3 +108,9 @@ Some ideas for future weapons:
 - [x] Grenade balance buff (damage ×2, radius +40%) — issue #1
 - [x] Smooth toroidal terrain seam (smoothstep edge blending) — issue #2
 - [x] Dig/melee weapon (slot 1, E key, tunnelling with horizontal push) — issue #3
+- [x] Dig tunnelling overhaul: grounded push previously never fired (guard rect
+      was flush with the floor); bore was narrower than the player; blast-edge
+      falloff left impassable rim lips; 1px slivers could be phased through at
+      the wrong parity. Now: uniform dig power, 40px bore, leading-half guard
+      inset 3px marched at 1px, push capped at meleeRange×0.25 so multi-hit
+      materials (rock/brick) tunnel at half the speed of soft ones.

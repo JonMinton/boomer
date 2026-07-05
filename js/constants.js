@@ -66,7 +66,7 @@ export const WEAPONS = Object.freeze({
         id:              'digger',
         name:            'Dig',
         damage:          20,
-        blastRadius:     16,
+        blastRadius:     20,   // bore diameter 40px — big enough that jittered digs still clear a passable tunnel
         terrainDestruct: 1.0,
         speed:           0,
         gravity:         0,
