@@ -24,6 +24,17 @@ export const MAX_HEALTH     = 100;
 export const RESPAWN_TIME   = 3000;        // ms
 export const DAMAGE_FLASH_DURATION = 150;  // ms
 
+// ── Clamber (wall-cling + wall-jump) ────────────────────────────────
+// Jumping onto a near-vertical face while pressing towards it grants a
+// brief grip window: fall is slowed to a wall-slide, and a fresh jump
+// press launches up and away. Chain jumps to clamber over buildings —
+// the "over" alternative to digging "through".
+export const CLAMBER = Object.freeze({
+    GRIP_TIME:   450,  // ms of grip per catch; expires → slide off, re-catch needs broken contact
+    SLIDE_SPEED: 1.2,  // max fall speed while gripping (px/frame)
+    JUMP_PUSH:   3.5,  // horizontal push-off on a wall-jump (px/frame)
+});
+
 // ── Material types (terrain) ────────────────────────────────────────
 export const MAT = Object.freeze({
     AIR:   0,

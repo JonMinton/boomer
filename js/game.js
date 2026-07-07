@@ -364,6 +364,13 @@ export class Game {
         // ── Physics ─────────────────────────────────────────────────
         for (const p of this.players) {
             p.updatePhysics(dt, this.terrain);
+
+            // Scrape dust while wall-clinging (telegraphs the grip)
+            if (p.clinging && Math.random() < 0.35) {
+                const px = p.clingDir > 0 ? p.x + p.width : p.x;
+                this.particles.emitTrail(px, p.cy + (Math.random() - 0.5) * 16,
+                    [150, 140, 120]);
+            }
         }
 
         // Decay accumulated dig damage over time

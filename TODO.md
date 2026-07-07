@@ -127,6 +127,16 @@ Some ideas for future weapons:
 - [x] Grenade balance buff (damage ×2, radius +40%) — issue #1
 - [x] Smooth toroidal terrain seam (smoothstep edge blending) — issue #2
 - [x] Dig/melee weapon (slot 1, E key, tunnelling with horizontal push) — issue #3
+- [x] Clamber (wall-cling + wall-jump): jumping onto a near-vertical face while
+      pressing towards it grants a ~450ms grip (slow wall-slide); a fresh jump
+      press launches up and away — chain taps to scale buildings. Second route
+      over tall verticality alongside digging through. AI clambers too (skill-
+      scaled). Tuning in CLAMBER (constants.js).
+- [x] fix: horizontal collision push-back was off-by-one (snap left the edge on
+      the solid column) — players crept into walls and the vertical resolver
+      misread the wall side as floor, enabling an infinite wall-ladder glitch
+- [x] fix: movement integration now sub-stepped at ≤4px per collision check —
+      bunny-hop speeds could previously phase straight through thin walls
 - [x] Dig tunnelling overhaul: grounded push previously never fired (guard rect
       was flush with the floor); bore was narrower than the player; blast-edge
       falloff left impassable rim lips; 1px slivers could be phased through at

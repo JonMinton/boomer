@@ -478,7 +478,7 @@ export function drawMainMenu(ctx, selectedMap, selectedDifficulty, hover, wrapSc
     ctx.font = '12px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('WASD / Arrows: Move  |  Mouse: Aim  |  Click: Fire  |  1-6: Switch Weapon  |  Space: Jump', CANVAS_WIDTH / 2, 600);
-    ctx.fillText('E: Dig/Melee  |  Q: Next Weapon  |  R: Restart  |  Hold: Charge (Grenade/Cluster) / Sight (Sniper)', CANVAS_WIDTH / 2, 620);
+    ctx.fillText('E: Dig  |  Q: Next Weapon  |  R: Restart  |  Hold: Charge/Sight  |  Jump at walls to clamber over', CANVAS_WIDTH / 2, 620);
 
     // Feedback buttons
     const fbBtnW = 130;

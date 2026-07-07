@@ -6,7 +6,7 @@
 import {
     PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_SPEED, JUMP_FORCE,
     MAX_HEALTH, GRAVITY, TERMINAL_VELOCITY, FRICTION, AIR_FRICTION,
-    WEAPON_LIST, DAMAGE_FLASH_DURATION,
+    WEAPON_LIST, DAMAGE_FLASH_DURATION, CLAMBER,
 } from './constants.js';
 import { clamp, angle } from './utils.js';
 import { playJump, playSwitch } from './audio.js';
@@ -71,6 +71,14 @@ export class Player {
         // Surface modifier (updated each physics tick)
         this.surfaceSpeedMod = 1.0;
 
+        // Clamber state (wall-cling + wall-jump)
+        this.clinging = false;
+        this.clingDir = 0;          // -1 wall on left, +1 wall on right
+        this.clingTimer = 0;        // ms of grip remaining
+        this.clingExhausted = false;
+        this._moveDirInput = 0;
+        this._prevJumpHeld = false;
+
         // Score
         this.wins = 0;
     }
@@ -106,6 +114,11 @@ export class Player {
         this.clusterMineMode = false;
         this.damageFlashEnd = 0;
         this.onGround = false;
+        this.clinging = false;
+        this.clingDir = 0;
+        this.clingTimer = 0;
+        this.clingExhausted = false;
+        this._prevJumpHeld = false;
         this.spawnX = spawnX;
         this.spawnY = spawnY;
         this._initAmmo();
@@ -209,6 +222,7 @@ export class Player {
      */
     applyInput(moveDir, jump) {
         if (this.dead) return;
+        this._moveDirInput = moveDir;
 
         // Horizontal movement (scaled by surface material)
         if (moveDir !== 0) {
@@ -216,12 +230,22 @@ export class Player {
             this.facingRight = moveDir > 0;
         }
 
-        // Jump
+        // Jump (held key keeps bunny-hopping from the ground; wall-jumps
+        // need a fresh press so clambering is a deliberate rhythm)
+        const jumpPressed = jump && !this._prevJumpHeld;
         if (jump && this.onGround) {
             this.vy = JUMP_FORCE;
             this.onGround = false;
             playJump();
+        } else if (jumpPressed && this.clinging) {
+            // Wall-jump: up and away from the gripped face
+            this.vy = JUMP_FORCE;
+            this.vx = -this.clingDir * CLAMBER.JUMP_PUSH;
+            this.clinging = false;
+            this.clingExhausted = false;
+            playJump();
         }
+        this._prevJumpHeld = jump;
     }
 
     /**
@@ -236,6 +260,13 @@ export class Player {
         // Gravity
         this.vy += GRAVITY * dtFactor;
         this.vy = clamp(this.vy, -TERMINAL_VELOCITY, TERMINAL_VELOCITY);
+
+        // Clamber: catch/hold/release the wall, then wall friction slows
+        // the slide while the grip window lasts
+        this._updateCling(dt, terrain);
+        if (this.clinging && this.vy > CLAMBER.SLIDE_SPEED) {
+            this.vy = CLAMBER.SLIDE_SPEED;
+        }
 
         // Surface material effects
         const surfaceMat = this.onGround
@@ -258,13 +289,29 @@ export class Player {
             this.vx *= AIR_FRICTION;
         }
 
-        // Horizontal movement + terrain collision
-        this.x += this.vx * dtFactor;
-        this._resolveHorizontal(terrain);
+        // Horizontal movement + terrain collision, in ≤4px sub-steps —
+        // high bunny-hop speeds must not phase through thin walls
+        let dX = this.vx * dtFactor;
+        while (Math.abs(dX) > 0.0001) {
+            const step = clamp(dX, -4, 4);
+            this.x += step;
+            dX -= step;
+            const beforeVx = this.vx;
+            this._resolveHorizontal(terrain);
+            if (beforeVx !== 0 && this.vx === 0) break;   // hit a wall
+        }
 
-        // Vertical movement + terrain collision
-        this.y += this.vy * dtFactor;
-        this._resolveVertical(terrain);
+        // Vertical movement + terrain collision, likewise sub-stepped
+        // (always resolve at least once so standing contact refreshes)
+        let dY = this.vy * dtFactor;
+        do {
+            const step = clamp(dY, -4, 4);
+            this.y += step;
+            dY -= step;
+            const beforeVy = this.vy;
+            this._resolveVertical(terrain);
+            if (beforeVy !== 0 && this.vy === 0) break;   // landed / bonked
+        } while (Math.abs(dY) > 0.0001);
 
         // World bounds (horizontal clamping handled by Game to support wrap mode)
 
@@ -277,24 +324,87 @@ export class Player {
         this._checkLava(terrain);
     }
 
-    /** Resolve horizontal terrain collisions. */
-    _resolveHorizontal(terrain) {
-        // Check feet, middle, and head on the leading edge
-        const edge = this.vx > 0 ? this.x + this.width : this.x;
-        const checks = [this.y + 2, this.y + this.height / 2, this.y + this.height - 2];
-
-        for (const cy of checks) {
-            if (terrain.isSolid(Math.round(edge), Math.round(cy))) {
-                // Push back
-                if (this.vx > 0) {
-                    this.x = Math.floor(edge) - this.width;
-                } else {
-                    this.x = Math.ceil(edge);
-                }
-                this.vx = 0;
-                break;
-            }
+    /**
+     * Clamber state machine. Airborne + falling + pressing into a
+     * near-vertical face → grip for CLAMBER.GRIP_TIME. When the grip
+     * expires the player slides off and cannot re-catch until contact
+     * with the wall is broken (or they wall-jump).
+     */
+    _updateCling(dt, terrain) {
+        if (this.onGround) {
+            this.clinging = false;
+            this.clingExhausted = false;
+            return;
         }
+        const dir = this._moveDirInput;
+
+        if (this.clinging) {
+            this.clingTimer -= dt;
+            const holding = dir === this.clingDir && this._wallContact(terrain, this.clingDir);
+            if (!holding) {
+                this.clinging = false;
+                this.clingExhausted = false;   // left the wall — may re-catch
+            } else if (this.clingTimer <= 0) {
+                this.clinging = false;
+                this.clingExhausted = true;    // grip spent — slide off
+            }
+            return;
+        }
+
+        if (this.clingExhausted) {
+            if (dir !== this.clingDir || !this._wallContact(terrain, this.clingDir)) {
+                this.clingExhausted = false;
+            }
+            return;
+        }
+
+        if (dir !== 0 && this.vy >= 0 && this._wallContact(terrain, dir)) {
+            this.clinging = true;
+            this.clingDir = dir;
+            this.clingTimer = CLAMBER.GRIP_TIME;
+        }
+    }
+
+    /**
+     * Is there a near-vertical face against the player's side?
+     * Requires 2 of 3 body-height samples solid so low steps and gentle
+     * slopes (absorbed by normal walking) don't count as walls.
+     */
+    _wallContact(terrain, dir) {
+        const edgeX = Math.round(dir > 0 ? this.x + this.width + 1 : this.x - 1);
+        let hits = 0;
+        if (terrain.isSolid(edgeX, Math.round(this.y + 4))) hits++;
+        if (terrain.isSolid(edgeX, Math.round(this.y + this.height / 2))) hits++;
+        if (terrain.isSolid(edgeX, Math.round(this.y + this.height - 6))) hits++;
+        return hits >= 2;
+    }
+
+    /**
+     * Resolve horizontal terrain collisions: push back 1px at a time
+     * until the leading edge is actually clear. (The old single snap to
+     * floor(edge)-width left the edge sample ON the solid column, so the
+     * player crept into walls and the vertical resolver then misread the
+     * wall's side as floor — an infinite wall-ladder glitch.)
+     */
+    _resolveHorizontal(terrain) {
+        const dir = this.vx > 0 ? 1 : this.vx < 0 ? -1 : 0;
+        if (dir === 0) return;
+
+        const edgeSolid = () => {
+            const edge = dir > 0 ? this.x + this.width : this.x;
+            const checks = [this.y + 2, this.y + this.height / 2, this.y + this.height - 2];
+            for (const cy of checks) {
+                if (terrain.isSolid(Math.round(edge), Math.round(cy))) return true;
+            }
+            return false;
+        };
+
+        let hit = false;
+        for (let i = 0; i < 10 && edgeSolid(); i++) {
+            this.x -= dir;
+            hit = true;
+        }
+        if (hit) this.vx = 0;
     }
 
     /** Resolve vertical terrain collisions. */
@@ -372,6 +482,8 @@ export class Player {
         this.vx += nx * force * falloff;
         this.vy += ny * force * falloff - 2; // slight upward bias
         this.onGround = false;
+        this.clinging = false;               // blasts break your grip
+        this.clingExhausted = false;
     }
 
     /**

@@ -106,6 +106,13 @@ export class AIController {
             case STATE.DODGE:   this._stateDodge(dt, now); break;
         }
 
+        // Clamber: when gripping a wall while pathing, chain wall-jumps
+        // over it — higher-skill AI climbs more decisively
+        if (this.self.clinging &&
+            Math.random() < 0.10 + 0.35 * this.difficulty.moveSkill) {
+            this.wantJump = true;
+        }
+
         // Apply inputs to player
         this.self.applyInput(this.moveDir, this.wantJump);
         this.self.aimAt(this.aimTarget.x, this.aimTarget.y);
