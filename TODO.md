@@ -10,7 +10,7 @@ An alternative to toroidal screen wrapping. Players move circularly around the t
 - Projectile trajectories curving under radial gravity
 - AI pathfinding adapted to curved surfaces
 
-### Headshot / body-shot damage zones
+### ~~Headshot / body-shot damage zones~~ — implemented (see FEATURES.md)
 Differentiate damage based on where a projectile hits a player. The player model has a distinct head and body region. Headshots (upper hitbox) would deal bonus damage (e.g. 1.5× multiplier), while body shots deal standard damage. This particularly rewards sniper accuracy and adds skill depth. Would need:
 - Split player AABB into head and body sub-regions
 - Explosion processing to check which zone the blast centre is nearest

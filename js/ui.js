@@ -9,21 +9,35 @@ import {
     BUG_REPORT_URL, FEATURE_REQUEST_URL, FEEDBACK_FORM_URL,
 } from './constants.js';
 import { MAP_DEFS } from './maps.js';
+import { CHANGELOG } from './changelog.js';
 import { clamp, lerp } from './utils.js';
 
 // ── Damage Numbers ──────────────────────────────────────────────────
 
-/** @typedef {{ x:number, y:number, text:string, life:number, maxLife:number }} DamageNumber */
+/** @typedef {{ x:number, y:number, text:string, rgb:number[], headshot:boolean, life:number, maxLife:number }} DamageNumber */
 
 /** @type {DamageNumber[]} */
 let damageNumbers = [];
 
-export function spawnDamageNumber(x, y, amount) {
+export function spawnDamageNumber(x, y, amount, headshot = false) {
     damageNumbers.push({
         x, y,
         text: `-${Math.round(amount)}`,
-        life: 800,
-        maxLife: 800,
+        rgb: headshot ? [255, 210, 80] : [255, 80, 60],
+        headshot,
+        life: headshot ? 1000 : 800,
+        maxLife: headshot ? 1000 : 800,
+    });
+}
+
+export function spawnHealNumber(x, y, amount) {
+    damageNumbers.push({
+        x, y,
+        text: `+${Math.round(amount)}`,
+        rgb: [90, 230, 110],
+        headshot: false,
+        life: 900,
+        maxLife: 900,
     });
 }
 
@@ -37,12 +51,20 @@ function updateDamageNumbers(dt) {
 }
 
 function drawDamageNumbers(ctx) {
-    ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'center';
     for (const d of damageNumbers) {
         const alpha = clamp(d.life / d.maxLife, 0, 1);
-        ctx.fillStyle = `rgba(255,80,60,${alpha})`;
-        ctx.fillText(d.text, d.x, d.y);
+        const [r, g, b] = d.rgb || [255, 80, 60];
+        ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+        if (d.headshot) {
+            ctx.font = 'bold 16px monospace';
+            ctx.fillText(d.text, d.x, d.y);
+            ctx.font = 'bold 8px monospace';
+            ctx.fillText('HEADSHOT', d.x, d.y - 14);
+        } else {
+            ctx.font = 'bold 14px monospace';
+            ctx.fillText(d.text, d.x, d.y);
+        }
     }
 }
 
@@ -315,6 +337,66 @@ function _drawRoundTimer(ctx, roundTimer) {
 
 // ── Menu Screens ────────────────────────────────────────────────────
 
+/** What's New panel drawn over the menu; returns its close region. */
+function drawChangelogPanel(ctx, hover) {
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    const pw = 560;
+    const ph = 150 + CHANGELOG.length * 58;
+    const px = CANVAS_WIDTH / 2 - pw / 2;
+    const py = Math.max(50, CANVAS_HEIGHT / 2 - ph / 2);
+
+    ctx.fillStyle = '#1e1e32';
+    ctx.fillRect(px, py, pw, ph);
+    ctx.strokeStyle = '#ff6b35';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px, py, pw, ph);
+
+    ctx.fillStyle = '#ff6b35';
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText("WHAT'S NEW", CANVAS_WIDTH / 2, py + 34);
+
+    const tagColours = { new: '#6c4', toggle: '#4af', fix: '#fa5' };
+    let ey = py + 66;
+    for (const e of CHANGELOG) {
+        ctx.textAlign = 'left';
+        ctx.fillStyle = tagColours[e.tag] || '#888';
+        ctx.font = 'bold 9px monospace';
+        ctx.fillText(e.tag.toUpperCase(), px + 22, ey);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText(e.title, px + 74, ey);
+        ctx.fillStyle = '#777';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(e.date, px + pw - 22, ey);
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#aaa';
+        ctx.font = '11px monospace';
+        ctx.fillText(e.blurb, px + 74, ey + 17);
+        ey += 58;
+    }
+
+    ctx.fillStyle = '#555';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('full log: FEATURES.md in the repo', CANVAS_WIDTH / 2, py + ph - 56);
+
+    // Close button
+    const cw = 120, chh = 32;
+    const cxB = CANVAS_WIDTH / 2 - cw / 2;
+    const cyB = py + ph - 46;
+    ctx.fillStyle = hover.newsClose ? '#ff8c55' : '#ff6b35';
+    ctx.fillRect(cxB, cyB, cw, chh);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText('CLOSE', CANVAS_WIDTH / 2, cyB + 21);
+
+    return { x: cxB, y: cyB, w: cw, h: chh };
+}
+
 /**
  * Draw the main menu.
  * @param {CanvasRenderingContext2D} ctx
@@ -322,8 +404,9 @@ function _drawRoundTimer(ctx, roundTimer) {
  * @param {string} selectedDifficulty - Key into AI_DIFFICULTY
  * @param {Object} hover - { map: number|null, diff: string|null, start: boolean, wrap: boolean }
  * @param {boolean} wrapScreen - Whether screen wrapping is enabled
+ * @param {boolean} showNews - render the What's New panel over the menu
  */
-export function drawMainMenu(ctx, selectedMap, selectedDifficulty, hover, wrapScreen = false) {
+export function drawMainMenu(ctx, selectedMap, selectedDifficulty, hover, wrapScreen = false, showNews = false) {
     // Background
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -519,8 +602,28 @@ export function drawMainMenu(ctx, selectedMap, selectedDifficulty, hover, wrapSc
     ctx.textAlign = 'center';
     ctx.fillText('No GitHub account? Use this form', CANVAS_WIDTH / 2, formY);
 
+    // What's New button (top-right)
+    const newsW = 130, newsH = 30;
+    const newsX = CANVAS_WIDTH - newsW - 24;
+    const newsY = 24;
+    ctx.fillStyle = hover.news ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.07)';
+    ctx.fillRect(newsX, newsY, newsW, newsH);
+    ctx.strokeStyle = 'rgba(255,107,53,0.6)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(newsX, newsY, newsW, newsH);
+    ctx.fillStyle = hover.news ? '#fff' : '#bbb';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText("WHAT'S NEW", newsX + newsW / 2, newsY + 20);
+
+    let newsCloseRegion = null;
+    if (showNews) {
+        newsCloseRegion = drawChangelogPanel(ctx, hover);
+    }
+
     // Return clickable regions for the game to use
     return {
+        newsRegion: { x: newsX, y: newsY, w: newsW, h: newsH },
+        newsCloseRegion,
         mapRegions: MAP_DEFS.map((_, i) => ({
             x: mapStartX + i * 140, y: 225, w: 125, h: 60, index: i,
         })),

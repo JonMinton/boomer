@@ -290,6 +290,16 @@ export const CRATE = Object.freeze({
     INITIAL_CRATES:   2,      // crates spawned at round start
     MIN_PLAYER_DIST:  180,    // min px from any player when spawning
     LAND_DESTROY_VEL: 4,      // if landing faster than this, crate is destroyed
+    MEDKIT_CHANCE:    0.35,   // share of drops that are med-kits, not ammo
+    MEDKIT_HEAL:      35,     // hp restored on collection (capped at max)
+});
+
+// ── Headshots ───────────────────────────────────────────────────────
+// Direct hits whose impact point lands in the head zone (top of the
+// body box) deal bonus damage. Blast splash is unaffected.
+export const HEADSHOT = Object.freeze({
+    MULT:      1.4,    // sniper 65 → 91: still not a one-shot from full health
+    ZONE_FRAC: 0.375,  // impact above this fraction of body height = headshot
 });
 
 // ── Round / scoring ─────────────────────────────────────────────────

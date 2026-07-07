@@ -4,20 +4,22 @@
  */
 
 import {
-    CANVAS_WIDTH, CANVAS_HEIGHT, CRATE, WEAPON_LIST,
+    CANVAS_WIDTH, CANVAS_HEIGHT, CRATE, WEAPON_LIST, MAX_HEALTH,
 } from './constants.js';
 import { clamp, randRange } from './utils.js';
 
 // ── Crate object factory ─────────────────────────────────────────────
 
 /**
- * Create a new ammo crate.
+ * Create a new crate.
  * @param {number} x - Horizontal spawn position
+ * @param {'ammo'|'medkit'} kind
  * @param {number} startY - Vertical spawn position (typically off-screen top)
  */
-function createCrate(x, startY = -20) {
+function createCrate(x, kind, startY = -20) {
     return {
         x,
+        kind,
         y:            startY,
         vy:           0,
         hasParachute: true,
@@ -38,12 +40,16 @@ export class PickupSystem {
 
         /** ms until next periodic spawn */
         this.spawnTimer = CRATE.SPAWN_INTERVAL;
+
+        /** Collection events since last drain: {kind, x, y, playerIndex, amount} */
+        this.events = [];
     }
 
     /** Remove all crates and reset timer. */
     clear() {
         this.crates = [];
         this.spawnTimer = CRATE.SPAWN_INTERVAL;
+        this.events.length = 0;
     }
 
     /**
@@ -63,7 +69,8 @@ export class PickupSystem {
             players.some(p => !p.dead && Math.abs(p.cx - x) < CRATE.MIN_PLAYER_DIST)
         );
 
-        this.crates.push(createCrate(x));
+        const kind = Math.random() < CRATE.MEDKIT_CHANCE ? 'medkit' : 'ammo';
+        this.crates.push(createCrate(x, kind));
     }
 
     /**
@@ -182,10 +189,20 @@ export class PickupSystem {
 
     /**
      * Handle a player collecting a crate.
-     * Refills the finite weapon with the lowest ammo proportion.
+     * Med-kits heal; ammo crates refill the weapon with the lowest ammo.
      */
     _collectCrate(crate, player) {
         crate.collected = true;
+
+        if (crate.kind === 'medkit') {
+            const healed = Math.min(CRATE.MEDKIT_HEAL, MAX_HEALTH - player.health);
+            player.health += healed;
+            this.events.push({ kind: 'medkit', x: crate.x, y: crate.y,
+                playerIndex: player.index, amount: healed });
+            return;
+        }
+        this.events.push({ kind: 'ammo', x: crate.x, y: crate.y,
+            playerIndex: player.index, amount: 0 });
 
         // Find the finite weapon with the lowest ammo fraction
         let bestIdx = -1;
@@ -286,28 +303,40 @@ export class PickupSystem {
             // Bobble when landed
             const bobble = c.landed ? Math.sin(c.age * 0.003) * 0.5 : 0;
 
-            ctx.fillStyle = '#8B6914';
-            ctx.fillRect(bx, by + bobble, CRATE.WIDTH, CRATE.HEIGHT);
+            if (c.kind === 'medkit') {
+                // White box with a red cross
+                ctx.fillStyle = '#e8e8e2';
+                ctx.fillRect(bx, by + bobble, CRATE.WIDTH, CRATE.HEIGHT);
+                ctx.strokeStyle = '#b8b8b0';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(bx, by + bobble, CRATE.WIDTH, CRATE.HEIGHT);
+                ctx.fillStyle = '#d03030';
+                ctx.fillRect(cx - 1.5, by + bobble + 2, 3, CRATE.HEIGHT - 4);
+                ctx.fillRect(bx + 3, by + bobble + CRATE.HEIGHT / 2 - 1.5, CRATE.WIDTH - 6, 3);
+            } else {
+                ctx.fillStyle = '#8B6914';
+                ctx.fillRect(bx, by + bobble, CRATE.WIDTH, CRATE.HEIGHT);
 
-            // Crate highlight
-            ctx.fillStyle = '#A67C1A';
-            ctx.fillRect(bx + 1, by + bobble + 1, CRATE.WIDTH - 2, 3);
+                // Crate highlight
+                ctx.fillStyle = '#A67C1A';
+                ctx.fillRect(bx + 1, by + bobble + 1, CRATE.WIDTH - 2, 3);
 
-            // Cross straps
-            ctx.strokeStyle = '#6B4F10';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(bx, by + bobble);
-            ctx.lineTo(bx + CRATE.WIDTH, by + bobble + CRATE.HEIGHT);
-            ctx.moveTo(bx + CRATE.WIDTH, by + bobble);
-            ctx.lineTo(bx, by + bobble + CRATE.HEIGHT);
-            ctx.stroke();
+                // Cross straps
+                ctx.strokeStyle = '#6B4F10';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(bx, by + bobble);
+                ctx.lineTo(bx + CRATE.WIDTH, by + bobble + CRATE.HEIGHT);
+                ctx.moveTo(bx + CRATE.WIDTH, by + bobble);
+                ctx.lineTo(bx, by + bobble + CRATE.HEIGHT);
+                ctx.stroke();
 
-            // Ammo symbol
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 8px monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText('A', cx, by + bobble + CRATE.HEIGHT - 3);
+                // Ammo symbol
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 8px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('A', cx, by + bobble + CRATE.HEIGHT - 3);
+            }
         }
     }
 }

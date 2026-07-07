@@ -7,7 +7,7 @@ import {
     CANVAS_WIDTH, CANVAS_HEIGHT,
     MAX_HEALTH, WEAPON_LIST, ROUNDS_TO_WIN, ROUND_START_DELAY,
     ROUND_TIME_LIMIT, SUDDEN_DEATH_DRAW_DELAY,
-    AI_DIFFICULTY,
+    AI_DIFFICULTY, HEADSHOT,
     BUG_REPORT_URL, FEATURE_REQUEST_URL, FEEDBACK_FORM_URL,
 } from './constants.js';
 import { dist, clamp } from './utils.js';
@@ -20,7 +20,8 @@ import { AIController } from './ai.js';
 import { MAP_DEFS, generateMap, findSpawnY } from './maps.js';
 import {
     drawHUD, drawMainMenu, drawRoundOver, drawMatchOver,
-    drawCountdown, drawTimesUp, spawnDamageNumber, clearDamageNumbers,
+    drawCountdown, drawTimesUp, spawnDamageNumber, spawnHealNumber,
+    clearDamageNumbers,
     triggerScreenShake, getScreenShake, updateScreenShake,
 } from './ui.js';
 import { resumeAudio, playExplosion, playHit, playVictory, playPickup } from './audio.js';
@@ -76,6 +77,7 @@ export class Game {
         this.wrapScreen         = false;
         this.menuHover = { map: null, diff: null, start: false, wrap: false, bugReport: false, suggestFeature: false, feedbackForm: false };
         this.menuRegions = null;
+        this.showChangelog = false;
 
         // Countdown
         this.countdownTimer = 0;
@@ -146,7 +148,28 @@ export class Game {
         if (this.menuRegions) {
             const mx = this.input.mouseX;
             const my = this.input.mouseY;
-            this.menuHover = { map: null, diff: null, start: false, wrap: false, bugReport: false, suggestFeature: false, feedbackForm: false };
+            const inside = (r) => r && mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h;
+            this.menuHover = { map: null, diff: null, start: false, wrap: false,
+                bugReport: false, suggestFeature: false, feedbackForm: false,
+                news: false, newsClose: false };
+
+            // While the What's New panel is open it swallows all clicks
+            if (this.showChangelog) {
+                if (inside(this.menuRegions.newsCloseRegion)) {
+                    this.menuHover.newsClose = true;
+                    if (this.input.mouseJustPressed) this.showChangelog = false;
+                } else if (this.input.mouseJustPressed || this.input.wasPressed('escape')) {
+                    this.showChangelog = false;
+                }
+                return;
+            }
+            if (inside(this.menuRegions.newsRegion)) {
+                this.menuHover.news = true;
+                if (this.input.mouseJustPressed) {
+                    this.showChangelog = true;
+                    return;
+                }
+            }
 
             for (const r of this.menuRegions.mapRegions) {
                 if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
@@ -393,10 +416,20 @@ export class Game {
 
                 if (isDirectHit || d < blastR) {
                     const falloff = isDirectHit ? 1 : 1 - (d / blastR);
-                    const dmg = dmgBase * falloff;
+                    let dmg = dmgBase * falloff;
+
+                    // Headshot: the impact point of a direct hit lands in
+                    // the head zone (top of the body box)
+                    let headshot = false;
+                    if (isDirectHit &&
+                        exp.y < p.y + p.height * HEADSHOT.ZONE_FRAC) {
+                        headshot = true;
+                        dmg *= HEADSHOT.MULT;
+                    }
+
                     p.takeDamage(dmg);
                     p.applyKnockback(exp.x, exp.y, kb, blastR);
-                    spawnDamageNumber(p.cx, p.y - 10, dmg);
+                    spawnDamageNumber(p.cx, p.y - 10, dmg, headshot);
                     playHit();
                     this.particles.emitHit(p.cx, p.cy);
                 }
@@ -411,12 +444,14 @@ export class Game {
         this.weapons.pendingExplosions.length = 0;
 
         // ── Pickups ────────────────────────────────────────────────
-        const cratesBefore = this.pickups.crates.length;
         this.pickups.update(dt, this.players, this.terrain);
-        // Play pickup sound if a crate was collected
-        if (this.pickups.crates.length < cratesBefore) {
+        for (const ev of this.pickups.events) {
             playPickup();
+            if (ev.kind === 'medkit' && ev.amount > 0) {
+                spawnHealNumber(ev.x, ev.y - 10, ev.amount);
+            }
         }
+        this.pickups.events.length = 0;
 
         // ── Particles ───────────────────────────────────────────────
         this.particles.update(dt);
@@ -559,7 +594,7 @@ export class Game {
         if (this.state === STATE.MENU) {
             this.menuRegions = drawMainMenu(
                 ctx, this.selectedMap, this.selectedDifficulty,
-                this.menuHover, this.wrapScreen
+                this.menuHover, this.wrapScreen, this.showChangelog
             );
             return;
         }
